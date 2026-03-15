@@ -1,0 +1,74 @@
+# Behavior Cloning Training Configuration
+train:
+  algorithm: "behavioral_cloning"
+
+  # Model configuration
+  model:
+    policy_type: "MLP"
+    hidden_dims: [512, 512, 256]
+    activation: "relu"
+    dropout: 0.1
+    batch_norm: false
+    layer_norm: true
+
+  # Training hyperparameters
+  hyperparameters:
+    learning_rate: 3e-4
+    batch_size: 1024
+    num_epochs: 200
+    weight_decay: 1e-5
+    gradient_clip: 1.0
+    lr_schedule: "cosine"
+    warmup_epochs: 10
+
+  # Data configuration
+  data:
+    dataset_path: "data/expert_demonstrations.pkl"
+    train_split: 0.8
+    val_split: 0.2
+    shuffle: true
+    normalize_observations: true
+    normalize_actions: true
+    data_augmentation: false
+
+  # Loss configuration
+  loss:
+    type: "mse"
+    action_loss_weight: 1.0
+    l2_regularization: 1e-6
+
+  # Evaluation
+  evaluation:
+    eval_frequency: 10  # epochs
+    num_eval_episodes: 50
+    eval_deterministic: true
+    save_videos: false
+
+  # Checkpointing
+  checkpointing:
+    save_frequency: 20  # epochs
+    save_best: true
+    max_checkpoints: 5
+    checkpoint_dir: "checkpoints/bc"
+
+  # Logging
+  logging:
+    use_wandb: false
+    project_name: "g1_bc"
+    log_frequency: 100  # steps
+    log_gradients: false
+    log_model: false
+
+  # Hardware
+  device: "auto"  # auto, cpu, cuda
+  num_workers: 4
+  pin_memory: true
+
+# Environment for evaluation
+eval_env:
+  name: "G1MotionImitation"
+  config_path: "configs/env/g1_motion_imitation.yaml"
+
+# Robot configuration
+robot:
+  config_path: "configs/robot/g1.yaml"

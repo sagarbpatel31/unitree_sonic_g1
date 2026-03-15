@@ -1,0 +1,262 @@
+# Motion retargeting configuration for converting human mocap to G1 trajectories
+
+# Input/Output settings
+input:
+  # Data source configuration
+  data_dir: "data/human_motion"
+  formats: ["npz", "bvh", "pkl"]
+  skeleton_types: ["amass", "cmu", "mixamo"]
+
+  # File patterns for batch processing
+  file_patterns:
+    - "**/*.npz"
+    - "**/*_poses.pkl"
+
+  # Preprocessing filters
+  min_duration: 1.0      # seconds - skip clips shorter than this
+  max_duration: 30.0     # seconds - truncate clips longer than this
+  min_framerate: 10.0    # Hz - skip clips with lower framerate
+
+output:
+  # Output directory structure
+  output_dir: "data/g1_trajectories"
+  save_format: "npz"  # "npz", "hdf5", "pickle"
+
+  # File organization
+  split_by_source: true    # Create subdirectories by source dataset
+  preserve_names: true     # Keep original filenames where possible
+  add_metadata: true       # Include processing metadata in files
+
+# Motion retargeting parameters
+retargeting:
+  # Core retargeting settings
+  target_fps: 50.0
+  smoothing_window: 5
+  position_scale: 1.0      # Scale factor for root positions
+  orientation_scale: 1.0   # Scale factor for joint rotations
+
+  # Joint processing
+  apply_joint_limits: true
+  filter_velocities: true
+
+  # Skeleton mapping configuration
+  skeleton_mappings:
+    amass:
+      # AMASS skeleton to G1 mapping
+      left_hip_yaw: ["leftHipYaw", {axis: "y", sign: 1, offset: 0.0}]
+      left_hip_roll: ["leftHipRoll", {axis: "x", sign: 1, offset: 0.0}]
+      left_hip_pitch: ["leftHipPitch", {axis: "z", sign: -1, offset: 0.0}]
+      left_knee: ["leftKnee", {axis: "z", sign: 1, offset: 0.0}]
+      left_ankle_pitch: ["leftAnklePitch", {axis: "z", sign: -1, offset: 0.0}]
+      left_ankle_roll: ["leftAnkleRoll", {axis: "x", sign: 1, offset: 0.0}]
+
+      right_hip_yaw: ["rightHipYaw", {axis: "y", sign: -1, offset: 0.0}]
+      right_hip_roll: ["rightHipRoll", {axis: "x", sign: -1, offset: 0.0}]
+      right_hip_pitch: ["rightHipPitch", {axis: "z", sign: -1, offset: 0.0}]
+      right_knee: ["rightKnee", {axis: "z", sign: 1, offset: 0.0}]
+      right_ankle_pitch: ["rightAnklePitch", {axis: "z", sign: -1, offset: 0.0}]
+      right_ankle_roll: ["rightAnkleRoll", {axis: "x", sign: -1, offset: 0.0}]
+
+      torso_yaw: ["torsoYaw", {axis: "y", sign: 1, offset: 0.0}]
+
+      left_shoulder_pitch: ["leftShoulderPitch", {axis: "z", sign: -1, offset: 0.0}]
+      left_shoulder_roll: ["leftShoulderRoll", {axis: "x", sign: 1, offset: 0.0}]
+      left_shoulder_yaw: ["leftShoulderYaw", {axis: "y", sign: 1, offset: 0.0}]
+      left_elbow: ["leftElbow", {axis: "z", sign: 1, offset: 0.0}]
+      left_wrist_yaw: ["leftWristYaw", {axis: "y", sign: 1, offset: 0.0}]
+      left_wrist_roll: ["leftWristRoll", {axis: "x", sign: 1, offset: 0.0}]
+      left_wrist_pitch: ["leftWristPitch", {axis: "z", sign: 1, offset: 0.0}]
+
+      right_shoulder_pitch: ["rightShoulderPitch", {axis: "z", sign: -1, offset: 0.0}]
+      right_shoulder_roll: ["rightShoulderRoll", {axis: "x", sign: -1, offset: 0.0}]
+      right_shoulder_yaw: ["rightShoulderYaw", {axis: "y", sign: -1, offset: 0.0}]
+      right_elbow: ["rightElbow", {axis: "z", sign: 1, offset: 0.0}]
+      right_wrist_yaw: ["rightWristYaw", {axis: "y", sign: -1, offset: 0.0}]
+      right_wrist_roll: ["rightWristRoll", {axis: "x", sign: -1, offset: 0.0}]
+      right_wrist_pitch: ["rightWristPitch", {axis: "z", sign: 1, offset: 0.0}]
+
+      head_yaw: ["headYaw", {axis: "y", sign: 1, offset: 0.0}]
+      head_pitch: ["headPitch", {axis: "z", sign: -1, offset: 0.0}]
+      head_roll: ["headRoll", {axis: "x", sign: 1, offset: 0.0}]
+
+    cmu:
+      # CMU skeleton to G1 mapping (similar structure with different joint names)
+      left_hip_yaw: ["LeftUpLeg", {axis: "y", sign: 1, offset: 0.0}]
+      left_hip_roll: ["LeftUpLeg", {axis: "x", sign: 1, offset: 0.0}]
+      left_hip_pitch: ["LeftUpLeg", {axis: "z", sign: -1, offset: 0.0}]
+      left_knee: ["LeftLeg", {axis: "z", sign: 1, offset: 0.0}]
+      left_ankle_pitch: ["LeftFoot", {axis: "z", sign: -1, offset: 0.0}]
+      left_ankle_roll: ["LeftFoot", {axis: "x", sign: 1, offset: 0.0}]
+      # ... (similar pattern for other joints)
+
+# Contact estimation configuration
+contact_estimation:
+  enabled: true
+
+  # Contact detection parameters
+  velocity_threshold: 0.02    # m/s
+  height_threshold: 0.05      # m
+  acceleration_threshold: 2.0 # m/s²
+  min_contact_duration: 0.1   # seconds
+
+  # Processing options
+  smoothing_window: 5
+  use_velocity: true
+  use_height: true
+  use_acceleration: true
+  combine_method: "voting"    # "voting", "weighted", "all"
+
+  # Foot joint names for contact detection
+  foot_joints:
+    left: ["left_ankle", "left_foot", "left_toe", "LeftAnkle", "LeftFoot"]
+    right: ["right_ankle", "right_foot", "right_toe", "RightAnkle", "RightFoot"]
+
+# Normalization configuration
+normalization:
+  enabled: true
+
+  # What to normalize
+  normalize_joint_pos: true
+  normalize_joint_vel: true
+  normalize_joint_acc: false
+  normalize_root_pos: true
+  normalize_root_orient: false  # Quaternions are complex to normalize
+  normalize_root_lin_vel: true
+  normalize_root_ang_vel: true
+
+  # Normalization methods
+  joint_pos_method: "standard"    # "standard", "minmax", "robust"
+  joint_vel_method: "standard"
+  joint_acc_method: "standard"
+  root_pos_method: "standard"
+  root_vel_method: "standard"
+
+  # Outlier handling
+  outlier_std_threshold: 3.0
+  clip_outliers: true
+  min_std: 1e-6
+
+  # Special handling
+  preserve_root_height: true   # Don't normalize Z-axis of root
+  preserve_root_yaw: false     # Preserve yaw rotation
+
+  # Statistics computation
+  compute_per_sequence: false  # Compute global statistics across all sequences
+  save_statistics: true       # Save normalization statistics for later use
+  statistics_file: "normalization_stats.pkl"
+
+# Validation configuration
+validation:
+  enabled: true
+
+  # Quality thresholds
+  critical_quality_threshold: 0.3
+  warning_quality_threshold: 0.7
+
+  # Joint validation
+  joint_limit_tolerance: 0.1      # radians beyond limit
+  max_joint_velocity: 20.0        # rad/s
+  max_joint_acceleration: 100.0   # rad/s²
+
+  # Root motion validation
+  max_root_displacement: 10.0     # meters per frame
+  max_root_velocity: 5.0          # m/s
+  max_root_acceleration: 20.0     # m/s²
+
+  # Contact validation
+  min_contact_duration: 0.05      # seconds
+  max_foot_penetration: 0.01      # meters
+  contact_transition_smoothness_threshold: 0.5
+
+  # Output options
+  generate_plots: true
+  plot_output_dir: "validation_plots"
+  save_metrics: true
+  metrics_file: "validation_metrics.json"
+
+# Dataset splitting configuration
+dataset_split:
+  enabled: true
+
+  # Split ratios (must sum to 1.0)
+  train_ratio: 0.8
+  val_ratio: 0.15
+  test_ratio: 0.05
+
+  # Splitting strategy
+  split_method: "random"      # "random", "sequential", "stratified"
+  random_seed: 42
+
+  # Stratification options (for stratified split)
+  stratify_by: ["duration", "source"]  # Stratify by clip duration and source dataset
+  duration_bins: [0, 2, 5, 10, 30]     # Bin edges for duration stratification
+
+  # Cross-validation support
+  create_cv_folds: false
+  n_cv_folds: 5
+
+# Batch processing configuration
+batch_processing:
+  # Parallel processing
+  use_multiprocessing: true
+  n_workers: 4              # Number of worker processes (0 = auto)
+  chunk_size: 10            # Files per worker batch
+
+  # Progress tracking
+  show_progress: true
+  log_frequency: 100        # Log progress every N files
+
+  # Error handling
+  continue_on_error: true   # Continue processing other files if one fails
+  max_errors: 10           # Stop if more than this many files fail
+  error_log_file: "retargeting_errors.log"
+
+  # Memory management
+  clear_cache_frequency: 50  # Clear memory cache every N files
+  max_memory_usage: 8.0     # GB - restart worker if exceeded
+
+# Quality control
+quality_control:
+  # Automatic filtering
+  auto_filter_low_quality: true
+  quality_threshold: 0.5         # Automatically discard trajectories below this score
+
+  # Manual review
+  flag_for_review: true          # Flag medium-quality trajectories for manual review
+  review_threshold: 0.7          # Flag trajectories below this score
+  review_output_dir: "manual_review"
+
+  # Duplicate detection
+  detect_duplicates: true
+  duplicate_threshold: 0.95      # Similarity threshold for duplicate detection
+
+  # Statistics tracking
+  track_statistics: true
+  statistics_output_file: "processing_statistics.json"
+
+# Logging configuration
+logging:
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  console_output: true
+  file_output: true
+  log_file: "retargeting.log"
+
+  # Detailed logging options
+  log_processing_times: true
+  log_memory_usage: false
+  log_validation_details: true
+
+# Advanced options
+advanced:
+  # Experimental features
+  use_ik_refinement: false       # Use inverse kinematics to refine joint angles
+  use_physics_validation: false # Validate using physics simulation
+
+  # Performance optimization
+  cache_skeleton_mappings: true
+  precompute_statistics: true
+
+  # Debug options
+  debug_mode: false
+  save_intermediate_results: false
+  debug_output_dir: "debug"

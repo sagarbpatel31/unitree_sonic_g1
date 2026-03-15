@@ -1,0 +1,321 @@
+# Fine-tuning Configuration for Unitree G1 Robust Controller
+# Residual RL approach for adding robustness to pretrained policies
+
+# Experiment settings
+experiment:
+  name: "g1_finetune_residual"
+  tags: ["fine_tuning", "residual_rl", "robustness", "g1"]
+  description: "Residual RL fine-tuning for robust G1 motion control"
+
+# Approach selection
+approach: "residual"  # "residual" or "direct"
+
+# Model configuration
+model:
+  pretrained_checkpoint: "checkpoints/bc_warmstart/best_model.pth"  # Path to pretrained policy
+
+  # Residual policy configuration
+  residual_policy:
+    hidden_dims: [256, 256]
+    activation: "ReLU"
+    use_layer_norm: true
+    dropout_rate: 0.1
+
+    # Residual scaling and constraints
+    residual_scale: 0.1      # Scale factor for residual outputs
+    max_residual: 0.5        # Maximum residual magnitude
+
+    # Stochastic residuals
+    learn_std: true
+    min_log_std: -3.0
+    max_log_std: -1.0
+
+  # Value function (optional - can reuse base policy's if available)
+  value_function:
+    hidden_dims: [256, 256]
+    activation: "ReLU"
+    use_layer_norm: true
+
+# Environment configuration
+env:
+  model_path: "assets/unitree_g1/g1.xml"
+  frame_skip: 10
+  action_type: "position_delta"
+  action_scale: 0.1
+
+  # Basic environment settings
+  observations:
+    include_joint_pos: true
+    include_joint_vel: true
+    include_root_orientation: true
+    include_root_linear_vel: true
+    include_root_angular_vel: true
+    include_reference_motion: true
+    reference_horizon: 10
+    normalize_observations: true
+
+  rewards:
+    # Base tracking rewards
+    joint_pos_weight: 2.0
+    root_pos_weight: 1.0
+    root_orient_weight: 1.0
+
+    # Robustness rewards
+    stability_weight: 0.5
+    energy_efficiency_weight: 0.2
+    command_following_weight: 1.5
+
+    # Penalty for falling
+    fall_penalty: -10.0
+
+  resets:
+    use_reference_pose: true
+    pose_noise_scale: 0.05
+    reset_on_fall: true
+
+# Disturbance configuration for robustness training
+disturbances:
+  # Physical disturbances
+  enable_pushes: true
+  push_force_range: [50, 200]     # Newtons
+  push_frequency: 0.02            # Probability per step
+  push_duration_range: [0.1, 0.3] # Seconds
+
+  # Parameter variations
+  friction_range: [0.5, 1.5]      # Multiplier on default friction
+  mass_range: [0.8, 1.3]          # Multiplier on body masses
+  motor_strength_range: [0.7, 1.2] # Multiplier on motor strength
+
+  # Sensor noise and delays
+  obs_noise_std: 0.01             # Gaussian noise on observations
+  action_delay_steps: 0           # Action delay (0-3 steps)
+
+  # Terrain variations
+  enable_terrain: true
+  terrain_roughness: 0.05         # Height variation (meters)
+  terrain_frequency: 2.0          # Spatial frequency
+
+  # Command variations
+  enable_commands: true
+  speed_command_range: [0.5, 2.0] # m/s
+  turn_command_range: [-1.0, 1.0] # rad/s
+  command_change_frequency: 0.005 # Probability per step
+
+# Training configuration
+training:
+  max_epochs: 200
+  steps_per_epoch: 2048
+
+  # PPO hyperparameters
+  buffer_size: 2048
+  batch_size: 64
+  ppo_epochs: 10
+
+  # Policy optimization
+  clip_ratio: 0.2
+  value_clip: true
+  entropy_coef: 0.01
+  value_coef: 0.5
+  max_grad_norm: 1.0
+
+  # Residual-specific parameters
+  residual_regularization: 0.01   # L2 penalty on residual actions
+  base_tracking_weight: 0.1       # Encourage tracking base policy
+
+  # Learning rates
+  optimizer:
+    type: "adam"
+    lr: 3e-4
+    weight_decay: 1e-4
+
+  finetune_lr_scale: 0.3         # Scale factor for direct fine-tuning
+
+  # RL parameters
+  gamma: 0.99
+  lambda_gae: 0.95
+
+  # Value function learning
+  learn_value_function: true
+
+  # Checkpointing
+  checkpoint_dir: "checkpoints/finetuned"
+  checkpoint_interval: 10
+
+  # Early stopping
+  early_stopping_patience: 30
+
+  # Hardware
+  use_cuda: true
+  seed: 42
+
+# Evaluation configuration
+eval:
+  eval_interval: 5              # Evaluate every N epochs
+  num_episodes: 10              # Episodes per evaluation
+  final_episodes: 25            # Episodes for final evaluation
+  max_episode_steps: 1000       # Maximum steps per episode
+  min_success_steps: 500        # Minimum steps for success
+
+  # Evaluation metrics
+  track_fall_rate: true
+  track_tracking_error: true
+  track_command_following: true
+  track_energy_efficiency: true
+
+  # Disturbance levels for evaluation
+  test_disturbance_levels: ["low", "medium", "high"]
+
+# Logging configuration
+logging:
+  use_tensorboard: true
+  use_wandb: false
+
+  wandb_project: "unitree_g1_robustness"
+  wandb_entity: null
+
+  log_dir: "logs/finetuning"
+  experiment_name: "${experiment.name}_${now:%Y%m%d_%H%M%S}"
+  log_interval: 100
+
+# Configuration variants for different scenarios
+
+# Fast debugging
+debug:
+  training:
+    max_epochs: 10
+    steps_per_epoch: 512
+    buffer_size: 512
+    batch_size: 32
+    ppo_epochs: 3
+
+  eval:
+    num_episodes: 3
+    final_episodes: 5
+    max_episode_steps: 200
+
+  disturbances:
+    push_frequency: 0.1
+    command_change_frequency: 0.02
+
+# High robustness training
+robust:
+  disturbances:
+    # More aggressive disturbances
+    push_force_range: [100, 300]
+    push_frequency: 0.05
+    friction_range: [0.3, 2.0]
+    mass_range: [0.6, 1.5]
+    motor_strength_range: [0.5, 1.3]
+    obs_noise_std: 0.02
+    action_delay_steps: 2
+    terrain_roughness: 0.1
+
+    # More varied commands
+    speed_command_range: [0.2, 2.5]
+    turn_command_range: [-1.5, 1.5]
+    command_change_frequency: 0.01
+
+  training:
+    max_epochs: 300
+    residual_regularization: 0.005  # Allow larger residuals
+
+  model:
+    residual_policy:
+      residual_scale: 0.15
+      max_residual: 0.8
+
+# Conservative fine-tuning (smaller residuals)
+conservative:
+  model:
+    residual_policy:
+      residual_scale: 0.05
+      max_residual: 0.2
+      dropout_rate: 0.2
+
+  training:
+    residual_regularization: 0.05
+    base_tracking_weight: 0.3
+
+    optimizer:
+      lr: 1e-4  # Lower learning rate
+
+  disturbances:
+    # Milder disturbances
+    push_force_range: [25, 100]
+    push_frequency: 0.01
+    friction_range: [0.7, 1.3]
+    mass_range: [0.9, 1.2]
+    obs_noise_std: 0.005
+
+# Direct policy fine-tuning (no residuals)
+direct:
+  approach: "direct"
+
+  training:
+    finetune_lr_scale: 0.1  # Very conservative for direct fine-tuning
+    max_epochs: 100
+
+    # Different PPO settings for direct fine-tuning
+    clip_ratio: 0.1
+    entropy_coef: 0.001
+
+  # No residual-specific parameters needed
+
+# Command-focused training
+command_following:
+  disturbances:
+    # Emphasize command variations
+    enable_commands: true
+    speed_command_range: [0.1, 3.0]
+    turn_command_range: [-2.0, 2.0]
+    command_change_frequency: 0.02
+
+    # Moderate physical disturbances
+    enable_pushes: true
+    push_force_range: [30, 150]
+    push_frequency: 0.01
+
+  env:
+    rewards:
+      command_following_weight: 3.0  # Higher weight on command following
+      joint_pos_weight: 1.0
+      stability_weight: 1.0
+
+  eval:
+    track_command_following: true
+    track_speed_accuracy: true
+    track_turning_accuracy: true
+
+# Terrain-focused training
+terrain_adaptation:
+  disturbances:
+    # Emphasize terrain variations
+    enable_terrain: true
+    terrain_roughness: 0.08
+    terrain_frequency: 1.5
+    terrain_types: ["slopes", "steps", "rough"]
+
+    # Moderate other disturbances
+    enable_pushes: false
+    enable_commands: false
+    obs_noise_std: 0.005
+
+  env:
+    rewards:
+      stability_weight: 2.0
+      foot_contact_weight: 1.0
+      height_maintenance_weight: 1.5
+
+  eval:
+    test_terrain_types: ["flat", "slope_5deg", "slope_10deg", "rough"]
+
+# Notes for fine-tuning:
+#
+# 1. Start with conservative settings and gradually increase disturbance intensity
+# 2. Monitor residual magnitudes - they should remain reasonably small
+# 3. Base tracking weight helps preserve original motion patterns
+# 4. Use residual regularization to prevent overly large corrections
+# 5. Evaluate on multiple disturbance levels to assess robustness
+# 6. Consider curriculum learning: start with mild disturbances, increase over time
+# 7. Direct fine-tuning requires very conservative learning rates to avoid catastrophic forgetting
+# 8. Residual approach is generally more stable and preserves motion quality better

@@ -1,0 +1,312 @@
+# PPO Motion Imitation Training Configuration for Unitree G1
+# Optimized for humanoid robot motion learning with curriculum support
+
+# Experiment settings
+experiment:
+  name: "g1_ppo_motion_imitation"
+  tags: ["ppo", "motion_imitation", "g1", "humanoid"]
+  description: "PPO-based motion imitation training for Unitree G1 robot"
+
+# Data configuration
+data:
+  motion_clips_dir: "data/g1_trajectories"  # Directory containing processed motion clips
+  normalizer_path: "data/normalization_stats.pkl"  # Optional path to normalization statistics
+  clip_sampling_strategy: "curriculum"  # "random", "weighted", "curriculum"
+
+# Environment configuration
+env:
+  model_path: "assets/unitree_g1/g1.xml"  # Path to MuJoCo model
+  max_episode_steps: 1000
+
+  # Use G1 environment configuration from envs/g1_full_featured.yaml
+  frame_skip: 10
+  action_type: "position_delta"
+  action_scale: 0.1
+  render_mode: null
+
+  # Environment-specific settings optimized for motion imitation
+  observations:
+    include_joint_pos: true
+    include_joint_vel: true
+    include_root_orientation: true
+    include_root_linear_vel: true
+    include_root_angular_vel: true
+    include_previous_action: true
+    include_reference_motion: true
+    reference_horizon: 15
+    include_commands: false  # Disable commands for pure imitation
+    include_foot_contacts: true
+    include_imu: true
+    include_height_scan: false
+    normalize_observations: true
+
+  # Rewards optimized for motion imitation
+  rewards:
+    # Motion tracking (primary objectives)
+    joint_pos_weight: 2.0
+    joint_vel_weight: 0.3
+    root_pos_weight: 1.5
+    root_orient_weight: 1.5
+    root_vel_weight: 0.8
+    root_angvel_weight: 0.2
+    end_effector_weight: 1.0
+
+    # Contact consistency
+    foot_contact_weight: 0.4
+    foot_slip_weight: 0.2
+
+    # Stability and naturalness
+    upright_weight: 0.2
+    action_smoothness_weight: 0.1
+
+    # Energy penalties (lower for imitation)
+    torque_penalty_weight: 0.0005
+    energy_penalty_weight: 0.0005
+
+    # Bonus terms
+    alive_bonus: 0.05
+    command_tracking_weight: 0.0
+
+    # Reward scaling
+    joint_pos_scale: 20.0
+    joint_vel_scale: 2.0
+    root_pos_scale: 30.0
+    root_orient_scale: 10.0
+
+  # Reset configuration for motion imitation
+  resets:
+    use_reference_pose: true
+    pose_noise_scale: 0.05  # Small noise for robustness
+    velocity_noise_scale: 0.05
+    reset_to_reference: true
+    reset_to_default: false
+    reset_random: false
+    random_reference_time: true
+    reference_time_range: [0.0, 0.8]  # Don't reset at very end of clips
+    joint_pos_noise: 0.02
+    joint_vel_noise: 0.05
+    root_pos_noise: 0.01
+    root_orient_noise: 0.05
+
+  # Minimal domain randomization for initial training
+  randomization:
+    enabled: true
+
+    # Physics (conservative)
+    friction_enabled: true
+    friction_range: [0.8, 1.2]
+    mass_enabled: true
+    mass_range: [0.95, 1.05]
+    motor_enabled: true
+    motor_range: [0.98, 1.02]
+
+    # Disable aggressive randomization initially
+    push_enabled: false
+    sensor_noise_enabled: false
+    latency_enabled: false
+
+  # Safety configuration
+  safety:
+    fall_height: 0.3
+    fall_angle: 1.2
+    max_joint_vel: 50.0
+
+# Policy network configuration
+policy:
+  # Architecture
+  hidden_dims: [512, 512, 256]
+  activation: "ReLU"
+  use_layer_norm: false
+  dropout_rate: 0.0
+
+  # Action distribution
+  log_std_type: "learned"  # "learned", "fixed", "state_dependent"
+  initial_log_std: -0.5
+  min_log_std: -5.0
+  max_log_std: 1.0
+
+  # Action processing
+  action_scale: 1.0
+  action_clip: null  # No additional clipping beyond environment
+
+# Critic network configuration
+critic:
+  # Architecture (typically larger than policy)
+  hidden_dims: [512, 512, 512, 256]
+  activation: "ReLU"
+  use_layer_norm: false
+  dropout_rate: 0.0
+
+  # Value normalization
+  use_value_norm: true
+  value_norm_eps: 1e-8
+
+# PPO algorithm configuration
+ppo:
+  # Core PPO parameters
+  clip_ratio: 0.2
+  epochs: 10
+  minibatch_size: 64
+  buffer_size: 2048  # Steps per environment before update
+
+  # Loss coefficients
+  value_loss_coeff: 0.5
+  entropy_coeff: 0.01
+
+  # Advanced options
+  clip_critic: false
+  critic_clip_ratio: 0.2
+  target_kl: 0.01  # Early stopping if KL divergence exceeds this
+  max_grad_norm: 0.5
+
+  # Advantage computation
+  gamma: 0.99
+  gae_lambda: 0.95
+
+  # Mixed precision
+  use_mixed_precision: false  # Enable if using modern GPUs
+
+# Training configuration
+training:
+  # Training schedule
+  max_steps: 5000000
+  num_envs: 16  # Number of parallel environments
+
+  # Learning rates
+  policy_lr: 3e-4
+  critic_lr: 3e-4
+  adam_eps: 1e-5
+
+  # Learning rate scheduling
+  lr_schedule: "linear"  # "constant", "linear", "cosine"
+  min_lr_ratio: 0.1
+
+  # Hardware
+  use_cuda: true
+  seed: 42
+
+  # Checkpointing
+  checkpoint_dir: "checkpoints/ppo_imitation"
+  checkpoint_interval: 50000  # Steps
+
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 10  # Evaluations without improvement
+    min_improvement: 0.01
+
+# Curriculum learning configuration
+curriculum:
+  enabled: true
+
+  # Adaptation parameters
+  target_success_rate: 0.8  # Target success rate to increase difficulty
+  adaptation_rate: 0.02     # Rate of curriculum progression
+
+  # Difficulty criteria (computed automatically)
+  # - Motion duration
+  # - Joint velocity variance
+  # - Root motion speed
+
+  # Initial curriculum level (0.0 = easiest clips only, 1.0 = all clips)
+  initial_level: 0.0
+
+  # Minimum clips always available
+  min_clips_ratio: 0.1
+
+# Evaluation configuration
+eval:
+  # Evaluation schedule
+  eval_interval: 25000  # Steps between evaluations
+  num_episodes: 20
+
+  # Success criteria
+  success_threshold: 100.0  # Minimum episode reward to consider success
+
+  # Evaluation clips
+  use_test_clips: true  # Use separate test clips for evaluation
+  test_clips_ratio: 0.1  # Fraction of clips reserved for testing
+
+# Logging configuration
+logging:
+  # Backends
+  use_tensorboard: true
+  use_wandb: false  # Set to true and configure if using W&B
+
+  # W&B configuration (if enabled)
+  wandb_project: "unitree_g1_motion_imitation"
+  wandb_entity: null  # Your W&B username/org
+
+  # Logging settings
+  log_dir: "logs"
+  experiment_name: "${experiment.name}_${now:%Y%m%d_%H%M%S}"
+  log_interval: 2000  # Steps between training logs
+
+  # Additional logging
+  log_histograms: false
+  log_videos: false  # Expensive - enable only for important runs
+
+# Advanced training options
+advanced:
+  # Gradient clipping
+  clip_gradients: true
+  grad_clip_norm: 0.5
+
+  # Numerical stability
+  use_huber_loss: false
+  huber_delta: 1.0
+
+  # Action regularization
+  action_l2_weight: 0.0
+
+  # Network regularization
+  weight_decay: 0.0
+
+  # Batch normalization (not recommended for RL)
+  use_batch_norm: false
+
+# Hyperparameter suggestions for different scenarios
+scenarios:
+  # Fast iteration for debugging
+  debug:
+    training:
+      max_steps: 100000
+      num_envs: 4
+      checkpoint_interval: 10000
+    ppo:
+      buffer_size: 512
+      epochs: 5
+    eval:
+      eval_interval: 10000
+      num_episodes: 5
+
+  # High-quality training
+  production:
+    training:
+      max_steps: 20000000
+      num_envs: 64
+    ppo:
+      buffer_size: 4096
+      epochs: 15
+      minibatch_size: 128
+    eval:
+      num_episodes: 50
+
+  # Curriculum-heavy training
+  curriculum_focus:
+    curriculum:
+      adaptation_rate: 0.01  # Slower progression
+      target_success_rate: 0.85
+    training:
+      max_steps: 10000000
+    eval:
+      eval_interval: 20000
+
+# Notes on G1-specific tuning (see detailed notes in separate file)
+# Key parameters to tune for G1:
+# - reward weights (especially joint_pos_weight, root_pos_weight)
+# - action scaling and clipping
+# - reference motion horizon
+# - curriculum progression rate
+# - domain randomization strength
+# - learning rates (often need to be lower for humanoid control)

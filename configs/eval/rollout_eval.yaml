@@ -1,0 +1,75 @@
+# Rollout Evaluation Configuration
+evaluation:
+  type: "rollout"
+
+  # Model to evaluate
+  model:
+    checkpoint_path: "checkpoints/best_model.pt"
+    model_type: "policy"  # policy, actor_critic
+    deterministic: true
+
+  # Environment settings
+  environment:
+    config_path: "configs/env/g1_motion_imitation.yaml"
+    num_envs: 1
+    render: true
+    record_video: true
+
+  # Evaluation parameters
+  rollout:
+    num_episodes: 100
+    max_episode_length: 1000
+    early_termination: true
+    reset_on_done: true
+
+  # Metrics to compute
+  metrics:
+    success_rate: true
+    episode_length: true
+    cumulative_reward: true
+    tracking_error: true
+    joint_violations: true
+    stability_metrics: true
+
+    # Motion-specific metrics
+    motion_tracking:
+      joint_position_error: true
+      joint_velocity_error: true
+      end_effector_error: true
+      root_pose_error: true
+      contact_timing_error: true
+
+    # Safety metrics
+    safety:
+      joint_limit_violations: true
+      velocity_limit_violations: true
+      contact_force_violations: true
+      fall_detection: true
+
+  # Analysis
+  analysis:
+    compute_statistics: true
+    plot_trajectories: true
+    save_raw_data: true
+    compare_reference: true
+
+  # Output
+  output:
+    results_dir: "results/evaluation"
+    save_videos: true
+    video_fps: 30
+    save_plots: true
+    save_statistics: true
+    generate_report: true
+
+  # Visualization
+  visualization:
+    plot_joint_trajectories: true
+    plot_tracking_errors: true
+    plot_rewards: true
+    plot_contact_forces: true
+    show_reference_motion: true
+
+  # Hardware (for evaluation)
+  device: "auto"
+  num_threads: 1

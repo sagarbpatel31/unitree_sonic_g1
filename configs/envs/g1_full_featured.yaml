@@ -1,0 +1,200 @@
+# Full-featured configuration for G1 environment with all capabilities enabled
+
+# Basic environment settings
+frame_skip: 10
+action_type: "position_delta"  # "position_delta" or "position_absolute"
+action_scale: 0.1
+render_mode: null  # null, "rgb_array", "human"
+
+# Comprehensive observation configuration
+observations:
+  # Core proprioceptive observations
+  include_joint_pos: true
+  include_joint_vel: true
+  include_root_orientation: true
+  include_root_linear_vel: true
+  include_root_angular_vel: true
+  include_previous_action: true
+
+  # Reference motion features
+  include_reference_motion: true
+  reference_horizon: 15
+
+  # Command conditioning
+  include_commands: true
+
+  # Additional sensors
+  include_foot_contacts: true
+  include_imu: true
+  include_height_scan: true
+  height_scan_points: 17
+
+  # Sensor noise
+  joint_pos_noise: 0.01
+  joint_vel_noise: 0.1
+  imu_noise: 0.05
+
+  # Normalization
+  normalize_observations: true
+
+# Comprehensive reward configuration
+rewards:
+  # Motion tracking rewards
+  joint_pos_weight: 1.0
+  joint_vel_weight: 0.1
+  root_pos_weight: 1.0
+  root_orient_weight: 1.0
+  root_vel_weight: 0.5
+  root_angvel_weight: 0.1
+
+  # End effector tracking
+  end_effector_weight: 0.5
+
+  # Contact and slip
+  foot_contact_weight: 0.2
+  foot_slip_weight: 0.1
+
+  # Stability and naturalness
+  upright_weight: 0.1
+  action_smoothness_weight: 0.05
+
+  # Energy penalties
+  torque_penalty_weight: 0.001
+  energy_penalty_weight: 0.001
+
+  # Survival and command tracking
+  alive_bonus: 0.1
+  command_tracking_weight: 0.5
+
+  # Reward scaling parameters
+  joint_pos_scale: 10.0
+  joint_vel_scale: 1.0
+  root_pos_scale: 20.0
+  root_orient_scale: 5.0
+
+# Advanced reset configuration
+resets:
+  use_reference_pose: true
+  pose_noise_scale: 0.1
+  velocity_noise_scale: 0.1
+
+  # Reset strategies
+  reset_to_reference: true
+  reset_to_default: true
+  reset_random: true
+
+  # Reference motion sampling
+  random_reference_time: true
+  reference_time_range: [0.0, 1.0]
+
+  # Noise parameters
+  joint_pos_noise: 0.05
+  joint_vel_noise: 0.1
+  root_pos_noise: 0.02
+  root_orient_noise: 0.1
+
+  # Safety constraints
+  max_joint_deviation: 0.5
+  min_height: 0.5
+  max_height: 1.2
+
+# Comprehensive domain randomization
+randomization:
+  enabled: true
+
+  # Physics randomization
+  friction_enabled: true
+  friction_range: [0.5, 1.5]
+
+  mass_enabled: true
+  mass_range: [0.8, 1.2]
+
+  motor_enabled: true
+  motor_range: [0.9, 1.1]
+
+  damping_enabled: true
+  damping_range: [0.7, 1.3]
+
+  # Sensor noise randomization
+  sensor_noise_enabled: true
+  joint_pos_noise_range: [0.001, 0.01]
+  joint_vel_noise_range: [0.01, 0.1]
+  imu_noise_range: [0.01, 0.1]
+
+  # Control latency
+  latency_enabled: true
+  latency_range: [0, 2]
+
+  # External disturbances
+  push_enabled: true
+  push_probability: 0.002
+  push_force_range: [50.0, 200.0]
+  push_duration_range: [5, 20]
+
+  # Ground properties
+  ground_enabled: true
+  ground_friction_range: [0.3, 2.0]
+  ground_restitution_range: [0.0, 0.3]
+
+  # Actuator properties
+  actuator_enabled: true
+  actuator_gear_range: [0.9, 1.1]
+  actuator_bias_range: [-0.1, 0.1]
+
+  # Joint properties
+  joint_enabled: true
+  joint_stiffness_range: [0.8, 1.2]
+  joint_armature_range: [0.5, 1.5]
+
+# Advanced command configuration
+commands:
+  enabled: true
+
+  # Velocity ranges
+  forward_vel_range: [0.0, 2.0]
+  backward_vel_range: [-2.0, 0.0]
+  lateral_vel_range: [-1.0, 1.0]
+  yaw_rate_range: [-2.0, 2.0]
+
+  # Command timing
+  command_duration_range: [2.0, 10.0]
+  resample_interval: 100
+
+  # Command smoothing
+  smooth_commands: true
+  smoothing_factor: 0.9
+
+  # Command probabilities (optional - will use defaults)
+  # command_probabilities:
+  #   stop: 0.1
+  #   walk_forward: 0.4
+  #   walk_backward: 0.1
+  #   turn_left: 0.1
+  #   turn_right: 0.1
+  #   strafe_left: 0.1
+  #   strafe_right: 0.1
+
+# Safety configuration
+safety:
+  fall_height: 0.3
+  fall_angle: 1.0
+  max_joint_vel: 50.0
+
+# Curriculum learning parameters (for progressive training)
+curriculum:
+  # Domain randomization curriculum
+  randomization_schedule:
+    start_strength: 0.0
+    end_strength: 1.0
+    ramp_steps: 1000000
+
+  # Command curriculum
+  command_schedule:
+    simple_commands_steps: 500000
+    full_commands_steps: 2000000
+
+  # Observation noise curriculum
+  noise_schedule:
+    start_noise: 0.0
+    end_noise: 1.0
+    ramp_steps: 1500000

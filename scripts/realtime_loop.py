@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 
-from sonic_g1.deployment import RuntimeInferenceEngine, G1HardwareAdapter, SafetyFilter
+from sonic_g1.deploy import RuntimeInferenceEngine, G1HardwareAdapter, SafetyFilter
 
 logger = logging.getLogger(__name__)
 

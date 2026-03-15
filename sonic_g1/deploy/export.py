@@ -16,8 +16,9 @@ import onnx
 import onnxruntime as ort
 from omegaconf import DictConfig
 
-from sonic_g1.models.policy import G1Policy
-from sonic_g1.utils.checkpoints import load_checkpoint
+# TODO: Implement these modules
+# from sonic_g1.models.policy import G1Policy
+# from sonic_g1.utils.checkpoints import load_checkpoint
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,16 @@ class PolicyExporter:
 
     def _load_policy(self, checkpoint_path: str) -> Tuple[nn.Module, Dict[str, Any]]:
         """Load policy from checkpoint."""
+        # TODO: Implement checkpoint loading and policy creation
+        raise NotImplementedError(
+            "Policy loading not yet implemented. Required modules:\n"
+            "- sonic_g1.models.policy.G1Policy\n"
+            "- sonic_g1.utils.checkpoints.load_checkpoint\n"
+            "This is a placeholder implementation."
+        )
+
+        # Placeholder implementation structure:
+        """
         checkpoint = load_checkpoint(checkpoint_path, self.device)
 
         # Extract model info
@@ -116,6 +127,7 @@ class PolicyExporter:
                 module.training = False
 
         return policy, checkpoint
+        """
 
     def _export_to_onnx(self,
                        policy: nn.Module,

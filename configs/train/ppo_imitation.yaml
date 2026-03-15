@@ -1,0 +1,90 @@
+# PPO + Imitation Learning Configuration
+train:
+  algorithm: "ppo_imitation"
+
+  # Model configuration
+  model:
+    policy_type: "ActorCritic"
+    shared_backbone: false
+
+    actor:
+      hidden_dims: [512, 512, 256]
+      activation: "relu"
+      output_activation: "tanh"
+      layer_norm: true
+
+    critic:
+      hidden_dims: [512, 512, 256]
+      activation: "relu"
+      layer_norm: true
+
+  # PPO hyperparameters
+  ppo:
+    num_envs: 4096
+    num_steps: 24
+    num_epochs: 5
+    num_mini_batches: 4
+    clip_ratio: 0.2
+    value_loss_coef: 0.5
+    entropy_coef: 0.01
+    max_grad_norm: 1.0
+    target_kl: null
+    learning_rate: 3e-4
+    lr_schedule: "adaptive"  # adaptive, linear, constant
+
+  # Imitation learning
+  imitation:
+    use_expert_data: true
+    expert_data_path: "data/expert_demonstrations.pkl"
+    imitation_loss_coef: 1.0
+    bc_loss_type: "mse"
+    expert_sampling_ratio: 0.25  # mix ratio of expert vs policy data
+
+  # Training schedule
+  training:
+    total_timesteps: 50_000_000
+    learning_starts: 10000
+    eval_frequency: 500_000  # timesteps
+    save_frequency: 1_000_000  # timesteps
+
+  # Environment
+  env:
+    normalize_obs: true
+    normalize_reward: false
+    clip_obs: 10.0
+    clip_reward: 10.0
+    gamma: 0.99
+    use_gae: true
+    gae_lambda: 0.95
+
+  # Evaluation
+  evaluation:
+    num_eval_episodes: 100
+    eval_deterministic: true
+    save_videos: true
+    video_length: 1000
+
+  # Checkpointing
+  checkpointing:
+    checkpoint_dir: "checkpoints/ppo_imitation"
+    save_best: true
+    max_checkpoints: 10
+
+  # Logging
+  logging:
+    use_wandb: true
+    project_name: "g1_ppo_imitation"
+    log_frequency: 1000  # timesteps
+    log_videos: false
+
+  # Hardware
+  device: "auto"
+  compile_policy: false  # torch.compile
+
+# Environment configuration
+env:
+  config_path: "configs/env/g1_motion_imitation.yaml"
+
+# Robot configuration
+robot:
+  config_path: "configs/robot/g1.yaml"

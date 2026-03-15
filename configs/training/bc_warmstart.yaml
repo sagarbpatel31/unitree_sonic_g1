@@ -1,0 +1,303 @@
+# Behavior Cloning Warm-start Configuration for Unitree G1
+# Supervised pretraining before PPO fine-tuning
+
+# Experiment settings
+experiment:
+  name: "g1_bc_warmstart"
+  tags: ["behavior_cloning", "warmstart", "g1", "supervised"]
+  description: "Behavior cloning warm-start training for G1 motion imitation"
+
+# Model configuration
+model:
+  obs_dim: 150  # Will be computed automatically from data
+  action_dim: 22  # G1 has 22 DOF
+
+  # Policy network configuration (should match PPO config)
+  policy:
+    hidden_dims: [512, 512, 256]
+    activation: "ReLU"
+    use_layer_norm: false
+    dropout_rate: 0.0
+
+    # Action distribution (for BC, we typically want deterministic)
+    log_std_type: "learned"
+    initial_log_std: -2.0  # Lower than PPO for more deterministic behavior
+    min_log_std: -5.0
+    max_log_std: 0.0  # Cap exploration during BC
+
+    # Action processing
+    action_scale: 1.0
+    action_clip: null
+
+# Data configuration
+data:
+  # Input data
+  trajectory_dir: "data/g1_trajectories"  # Directory with retargeted motion clips
+  val_split: 0.2  # Validation split ratio
+
+  # Normalizers (optional - should match retargeting pipeline output)
+  state_normalizer_path: "data/normalization_stats.pkl"
+  action_normalizer_path: null  # Usually not needed for actions
+
+  # Dataset configuration
+  sequence_length: 1  # Use single timesteps for basic BC
+  skip_frames: 1  # Use every frame
+  min_trajectory_length: 50  # Minimum trajectory length
+  max_trajectory_length: 2000  # Maximum trajectory length
+
+  # Quality filtering
+  filter_quality: true
+  quality_threshold: 0.6  # Only use high-quality retargeted clips
+
+  # Data augmentation
+  augment_data: true
+  state_noise_std: 0.01
+  action_noise_std: 0.005
+
+  # Sequence processing (for RNN variants)
+  use_sequences: false
+
+  # Data loading
+  num_workers: 4
+
+  # State-action extraction configuration
+  extraction:
+    # State features
+    state:
+      include_joint_pos: true
+      include_joint_vel: true
+      include_root_pos: true
+      include_root_orient: true
+      include_root_lin_vel: true
+      include_root_ang_vel: true
+      include_previous_action: false  # Start simple
+      include_reference_features: true
+
+      # Reference motion features
+      reference_horizon: 10
+      reference_features: ["joint_pos", "root_pos"]
+
+      # Root orientation representation
+      root_orient_repr: "quat"  # "quat", "euler", "rotation_matrix"
+
+      # Root position processing
+      normalize_root_pos: false
+      relative_root_pos: true  # Use relative positions
+
+    # Action features
+    action:
+      type: "joint_positions"  # "joint_positions", "joint_deltas", "joint_velocities"
+      delta_scale: 1.0
+      clip_actions: false
+      action_clip_range: [-1.0, 1.0]
+
+    # Temporal configuration
+    action_lookahead: 1  # Actions are next timestep
+    state_history: 1  # No history for simple BC
+
+# Loss configuration
+losses:
+  # Primary losses
+  mse_weight: 1.0
+  mae_weight: 0.1  # Additional L1 regularization
+
+  # Regularization
+  regularization_weight: 0.001
+  regularization_type: "l2"  # "l1", "l2", "elastic"
+
+  # Advanced losses (start disabled)
+  velocity_consistency_weight: 0.0  # Enable if using state derivatives
+  action_smoothness_weight: 0.0     # Enable for sequence training
+  entropy_penalty_weight: 0.01      # Encourage deterministic behavior
+
+  # Loss function configuration
+  mse_reduction: "mean"
+  mae_reduction: "mean"
+  use_huber_loss: false
+  huber_delta: 1.0
+
+  # Per-joint weighting (optional)
+  per_joint_weights: null  # Could weight important joints more
+  critical_joint_multiplier: 1.0
+
+  # Advanced features
+  adaptive_weights: false
+  focal_loss_gamma: 0.0
+
+# Training configuration
+training:
+  # Training schedule
+  max_epochs: 100
+  batch_size: 256
+
+  # Optimizer
+  optimizer:
+    type: "adam"  # "adam", "adamw", "sgd"
+    lr: 1e-3      # Higher than PPO since this is supervised
+    weight_decay: 1e-4
+    eps: 1e-8
+
+  # Learning rate scheduling
+  use_scheduler: true
+  scheduler:
+    type: "cosine"  # "step", "cosine", "reduce_on_plateau"
+    # For cosine
+    min_lr: 1e-5
+    # For step
+    step_size: 30
+    gamma: 0.5
+    # For reduce on plateau
+    factor: 0.5
+    patience: 10
+
+  # Gradient clipping
+  clip_grad_norm: 1.0
+
+  # Hardware
+  use_cuda: true
+  seed: 42
+
+  # Checkpointing
+  checkpoint_dir: "checkpoints/bc_warmstart"
+  checkpoint_interval: 10  # Save every 10 epochs
+
+  # Early stopping
+  early_stopping_patience: 15  # Stop if no improvement for 15 epochs
+
+# Evaluation configuration
+eval:
+  # Evaluation schedule
+  eval_interval: 5  # Evaluate every 5 epochs
+
+  # Environment evaluation (optional)
+  use_env_eval: true
+  num_episodes: 5
+  max_episode_length: 500
+
+  # Environment config (simplified)
+  env_config:
+    model_path: "assets/unitree_g1/g1.xml"
+    frame_skip: 10
+    action_type: "position_delta"
+    action_scale: 0.1
+
+    observations:
+      include_joint_pos: true
+      include_joint_vel: true
+      include_root_orientation: true
+      include_root_linear_vel: true
+      include_root_angular_vel: true
+      include_reference_motion: true
+      reference_horizon: 10
+      normalize_observations: true
+
+    rewards:
+      joint_pos_weight: 2.0
+      root_pos_weight: 1.0
+      root_orient_weight: 1.0
+
+    resets:
+      use_reference_pose: true
+      pose_noise_scale: 0.02
+
+# Logging configuration
+logging:
+  # Backends
+  use_tensorboard: true
+  use_wandb: false
+
+  # W&B configuration (if enabled)
+  wandb_project: "unitree_g1_bc_warmstart"
+  wandb_entity: null
+
+  # Logging settings
+  log_dir: "logs"
+  experiment_name: "${experiment.name}_${now:%Y%m%d_%H%M%S}"
+  log_interval: 100  # Log every 100 batches
+
+# Configuration variants for different scenarios
+
+# Fast debugging configuration
+debug:
+  training:
+    max_epochs: 10
+    batch_size: 64
+    checkpoint_interval: 5
+
+  data:
+    min_trajectory_length: 20
+    max_trajectory_length: 200
+    num_workers: 2
+
+  eval:
+    eval_interval: 2
+    num_episodes: 2
+
+# High-quality training configuration
+production:
+  training:
+    max_epochs: 200
+    batch_size: 512
+
+  data:
+    augment_data: true
+    quality_threshold: 0.8
+
+  losses:
+    mae_weight: 0.05
+    regularization_weight: 0.0005
+
+  eval:
+    eval_interval: 10
+    num_episodes: 10
+
+# Sequence-based training for RNN policies
+sequence:
+  data:
+    sequence_length: 10
+    use_sequences: true
+    skip_frames: 2
+
+  model:
+    policy:
+      # Would use LSTM policy here
+      hidden_dims: [256, 256]
+
+  losses:
+    action_smoothness_weight: 0.1
+    velocity_consistency_weight: 0.05
+
+  training:
+    batch_size: 128  # Smaller batches for sequences
+
+# Minimal feature set for fast training
+minimal:
+  data:
+    extraction:
+      state:
+        include_joint_pos: true
+        include_joint_vel: true
+        include_root_pos: false
+        include_root_orient: false
+        include_root_lin_vel: false
+        include_root_ang_vel: false
+        include_reference_features: false
+
+  model:
+    policy:
+      hidden_dims: [256, 256]
+
+  training:
+    batch_size: 512
+    max_epochs: 50
+
+# Notes for BC warm-start tuning:
+#
+# 1. Start with minimal config for quick iteration
+# 2. Gradually add state features as training stabilizes
+# 3. Use higher learning rates than PPO (1e-3 vs 3e-4)
+# 4. Monitor validation loss - should decrease steadily
+# 5. Check environment rollouts to ensure policy is learning
+# 6. Aim for final MSE loss < 0.01 for good warm-start
+# 7. Export checkpoint with "export_for_ppo" method
+# 8. Initialize PPO policy with BC checkpoint for faster convergence

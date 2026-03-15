@@ -1,0 +1,86 @@
+# Data Retargeting Configuration for G1
+retargeting:
+  source_robot: "h1"  # or other source robot format
+  target_robot: "g1"
+
+  # Input data
+  input:
+    data_path: "data/raw/source_motions/"
+    data_format: "pkl"  # pkl, npz, h5
+    motion_files: ["walking.pkl", "running.pkl", "jumping.pkl"]
+
+  # Output data
+  output:
+    data_path: "data/processed/g1_retargeted/"
+    data_format: "pkl"
+    combine_files: true
+    output_filename: "g1_expert_demonstrations.pkl"
+
+  # Retargeting method
+  method:
+    type: "analytical"  # analytical, optimization, learning
+    preserve_global_trajectory: true
+    preserve_contact_timing: true
+    smooth_transitions: true
+
+  # Joint mapping
+  joint_mapping:
+    # Map source robot joints to G1 joints
+    left_hip_yaw: "left_hip_yaw"
+    left_hip_roll: "left_hip_roll"
+    left_hip_pitch: "left_hip_pitch"
+    left_knee_pitch: "left_knee"
+    left_ankle_pitch: "left_ankle_pitch"
+    left_ankle_roll: "left_ankle_roll"
+
+    right_hip_yaw: "right_hip_yaw"
+    right_hip_roll: "right_hip_roll"
+    right_hip_pitch: "right_hip_pitch"
+    right_knee_pitch: "right_knee"
+    right_ankle_pitch: "right_ankle_pitch"
+    right_ankle_roll: "right_ankle_roll"
+
+    torso_yaw: "torso"
+
+    left_shoulder_pitch: "left_shoulder_pitch"
+    left_shoulder_roll: "left_shoulder_roll"
+    left_elbow_pitch: "left_elbow"
+    left_wrist_yaw: null  # no equivalent, will be set to neutral
+
+    right_shoulder_pitch: "right_shoulder_pitch"
+    right_shoulder_roll: "right_shoulder_roll"
+    right_elbow_pitch: "right_elbow"
+    right_wrist_yaw: null
+
+    head_yaw: null  # will be set to neutral
+
+  # Kinematic constraints
+  constraints:
+    enforce_joint_limits: true
+    enforce_velocity_limits: true
+    foot_contact_preservation: true
+    center_of_mass_adjustment: true
+
+  # Post-processing
+  post_processing:
+    smooth_velocities: true
+    filter_high_frequency: true
+    filter_cutoff_hz: 20.0
+    resample_frequency: 100  # Hz
+    add_noise: false
+    noise_std: 0.001
+
+  # Validation
+  validation:
+    visualize_retargeted: true
+    compare_trajectories: true
+    check_joint_limits: true
+    check_stability: true
+    output_statistics: true
+
+  # Data augmentation
+  augmentation:
+    enabled: false
+    time_scaling: [0.8, 1.2]
+    noise_injection: 0.001
+    trajectory_reversal: false

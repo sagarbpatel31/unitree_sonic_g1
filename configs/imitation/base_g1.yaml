@@ -1,0 +1,98 @@
+# Base configuration for G1 motion imitation learning
+
+# Experiment metadata
+experiment:
+  name: "g1_imitation_base"
+  description: "Basic motion imitation for Unitree G1"
+  tags: ["g1", "imitation", "base"]
+
+# Environment configuration
+env:
+  name: "G1MotionImitation"
+  max_episode_steps: 1000
+  frame_skip: 10  # 200Hz -> 20Hz control frequency
+  observation_noise: 0.05
+  action_noise: 0.01
+
+  # Robot configuration
+  robot:
+    model_path: "data/assets/unitree_g1.xml"
+    init_noise: 0.1
+    self_collision: true
+
+  # Task configuration
+  task:
+    reference_data_path: "data/processed/amass_retargeted"
+    motion_length: 10.0  # seconds
+    early_termination: true
+    termination_height: 0.3  # meters
+
+  # Reward weights
+  rewards:
+    tracking_pos: 1.0
+    tracking_vel: 0.1
+    tracking_root: 2.0
+    energy: -0.001
+    alive: 0.1
+    termination: -10.0
+
+# Model configuration
+model:
+  name: "TransformerPolicy"
+  hidden_dim: 512
+  num_layers: 6
+  num_heads: 8
+  dropout: 0.1
+  sequence_length: 32
+
+  # Input/output dimensions (will be set automatically)
+  obs_dim: null  # Set by environment
+  action_dim: null  # Set by environment
+
+# Training configuration
+training:
+  algorithm: "BC"  # Behavior Cloning
+  total_steps: 10_000_000
+  batch_size: 256
+  learning_rate: 3e-4
+  weight_decay: 1e-5
+  grad_clip_norm: 10.0
+
+  # Data loading
+  num_workers: 4
+  prefetch_factor: 2
+
+  # Optimization
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingLR"
+  warmup_steps: 10_000
+
+# Evaluation configuration
+evaluation:
+  eval_frequency: 100_000  # steps
+  eval_episodes: 50
+  metrics:
+    - "tracking_error"
+    - "episode_length"
+    - "success_rate"
+    - "energy_consumption"
+
+# Logging configuration
+logging:
+  log_frequency: 1000  # steps
+  save_frequency: 100_000  # steps
+  max_checkpoints: 5
+
+  # Wandb configuration
+  wandb:
+    project: "unitree-g1-sonic"
+    entity: null  # Set your wandb entity
+    tags: ["imitation", "g1"]
+
+# Reproducibility
+seed: 42
+deterministic: false  # Set true for full reproducibility (slower)
+
+# Hardware configuration
+device: "auto"  # auto, cpu, cuda
+compile_model: false  # PyTorch 2.0 compilation

@@ -1,0 +1,349 @@
+# Comprehensive evaluation configuration for Unitree G1 controllers
+# Supports detailed policy evaluation with metrics, videos, and test suites
+
+# General settings
+use_cuda: true
+max_episode_steps: 1000
+episodes_per_suite: 10
+record_videos: false
+seed: 42
+
+# Environment configuration
+environment:
+  model_path: "assets/unitree_g1/g1.xml"
+  frame_skip: 10
+  action_type: "position_delta"
+  action_scale: 0.1
+
+  # Observation settings
+  observations:
+    include_joint_pos: true
+    include_joint_vel: true
+    include_root_orientation: true
+    include_root_linear_vel: true
+    include_root_angular_vel: true
+    include_reference_motion: true
+    reference_horizon: 10
+    normalize_observations: true
+
+  # Reward settings (for info collection)
+  rewards:
+    joint_pos_weight: 2.0
+    root_pos_weight: 1.0
+    root_orient_weight: 1.0
+    stability_weight: 0.5
+    energy_efficiency_weight: 0.2
+
+  # Reset settings
+  resets:
+    use_reference_pose: true
+    pose_noise_scale: 0.02
+
+# Metrics configuration
+metrics:
+  # Fall detection thresholds
+  fall_height_threshold: 0.3    # meters
+  fall_angle_threshold: 1.047   # ~60 degrees in radians
+
+  # Metric scaling
+  tracking_error_scale: 1.0
+  energy_scale: 1.0
+
+  # Test-specific success criteria
+  stand_min_duration: 300       # steps
+  walk_min_duration: 500        # steps
+  turn_min_duration: 200        # steps
+  default_min_duration: 200     # steps
+
+  # Success thresholds
+  stop_velocity_threshold: 0.1  # m/s
+  crouch_min_height_reduction: 0.2  # meters
+
+# Test suites configuration
+test_suites:
+  default_suites: ["stand", "walk", "turn", "stop"]
+  all_suites: ["stand", "walk", "turn", "stop", "recovery_from_push", "crouch"]
+
+  # Test suite specific configurations
+  suites:
+    stand:
+      description: "Maintain standing position"
+      duration: 30.0  # seconds
+      success_criteria:
+        - "no_fall"
+        - "min_duration"
+      env_overrides:
+        max_episode_steps: 300
+      commands:
+        target_pose: "standing"
+        maintain_position: true
+
+    walk:
+      description: "Forward walking with speed commands"
+      duration: 50.0  # seconds
+      success_criteria:
+        - "no_fall"
+        - "min_duration"
+        - "speed_tracking"
+      env_overrides:
+        max_episode_steps: 500
+      commands:
+        target_speed: 1.0  # m/s
+        speed_variations: [0.5, 1.0, 1.5]  # m/s
+        direction: "forward"
+
+    turn:
+      description: "Turning maneuvers with angular velocity commands"
+      duration: 20.0  # seconds
+      success_criteria:
+        - "no_fall"
+        - "min_duration"
+        - "turn_tracking"
+      env_overrides:
+        max_episode_steps: 200
+      commands:
+        target_turn_rate: 0.5  # rad/s
+        turn_variations: [-1.0, -0.5, 0.5, 1.0]  # rad/s
+
+    stop:
+      description: "Come to a complete stop from motion"
+      duration: 15.0  # seconds
+      success_criteria:
+        - "no_fall"
+        - "final_velocity_low"
+      env_overrides:
+        max_episode_steps: 150
+      commands:
+        initial_speed: 1.0  # m/s
+        target_speed: 0.0   # m/s
+        deceleration_time: 5.0  # seconds
+
+    recovery_from_push:
+      description: "Recover stability after external disturbance"
+      duration: 10.0  # seconds
+      success_criteria:
+        - "no_fall_after_push"
+        - "final_stability"
+      env_overrides:
+        max_episode_steps: 100
+      disturbances:
+        push_timing: 2.0      # seconds after start
+        push_force: 150       # Newtons
+        push_direction: 0.0   # radians (forward)
+        push_duration: 0.2    # seconds
+
+    crouch:
+      description: "Crouch down and maintain low position"
+      duration: 20.0  # seconds
+      success_criteria:
+        - "no_fall"
+        - "height_reduction"
+        - "stable_crouch"
+      env_overrides:
+        max_episode_steps: 200
+      commands:
+        target_pose: "crouched"
+        height_reduction: 0.3  # meters
+
+# Video recording configuration
+video:
+  output_dir: "videos"
+  width: 1280
+  height: 720
+  fps: 30
+  codec: "mp4v"
+
+  # Camera settings
+  camera_name: null  # Use free camera
+  camera_distance: 3.0
+  camera_elevation: -20  # degrees
+  camera_azimuth: 45     # degrees
+  track_robot: true
+
+  # Multi-camera recording
+  multi_camera: false
+  camera_configs:
+    - name: "side_view"
+      distance: 3.0
+      elevation: 0
+      azimuth: 90
+      width: 640
+      height: 360
+    - name: "front_view"
+      distance: 3.0
+      elevation: -10
+      azimuth: 0
+      width: 640
+      height: 360
+    - name: "top_view"
+      distance: 4.0
+      elevation: -90
+      azimuth: 0
+      width: 640
+      height: 360
+    - name: "perspective_view"
+      distance: 3.5
+      elevation: -30
+      azimuth: 45
+      width: 640
+      height: 360
+
+  # Video features
+  add_overlays: true
+  store_frames: false
+  post_process: true
+  compress_video: true
+  generate_thumbnail: true
+
+  # Highlights
+  max_highlights: 20
+
+# Comparison configuration
+comparison:
+  # Metrics to include in comparison plots
+  key_metrics:
+    - "success_rate"
+    - "fall_rate"
+    - "root_tracking_error"
+    - "joint_tracking_error"
+    - "action_smoothness"
+    - "energy_usage"
+    - "command_tracking_quality"
+    - "overall_score"
+
+  # Statistical analysis
+  perform_significance_tests: true
+  significance_threshold: 0.05
+
+  # Visualization settings
+  plot_style: "seaborn"
+  color_palette: "husl"
+  figure_size: [12, 8]
+  save_format: "png"
+  dpi: 300
+
+# Configuration variants for different evaluation scenarios
+
+# Quick evaluation (for development)
+quick:
+  episodes_per_suite: 3
+  max_episode_steps: 200
+  test_suites:
+    default_suites: ["stand", "walk"]
+  metrics:
+    stand_min_duration: 60
+    walk_min_duration: 100
+
+# Comprehensive evaluation (for publication)
+comprehensive:
+  episodes_per_suite: 25
+  max_episode_steps: 1500
+  test_suites:
+    default_suites: ["stand", "walk", "turn", "stop", "recovery_from_push", "crouch"]
+  record_videos: true
+  video:
+    multi_camera: true
+
+# Video-focused evaluation
+video_evaluation:
+  episodes_per_suite: 5
+  record_videos: true
+  video:
+    multi_camera: true
+    add_overlays: true
+    post_process: true
+    store_frames: true
+  comparison:
+    generate_video_comparisons: true
+
+# Metrics-only evaluation (no videos)
+metrics_only:
+  record_videos: false
+  episodes_per_suite: 15
+  video:
+    store_frames: false
+
+# Robustness evaluation
+robustness:
+  episodes_per_suite: 20
+  test_suites:
+    default_suites: ["recovery_from_push", "walk", "turn"]
+  environment:
+    add_noise: true
+    noise_level: 0.02
+  metrics:
+    focus_on_stability: true
+
+# Ablation study configuration
+ablation:
+  episodes_per_suite: 10
+  test_suites:
+    default_suites: ["stand", "walk"]
+  # Multiple environment configurations for ablation
+  env_variants:
+    - name: "no_noise"
+      observations:
+        normalize_observations: false
+      add_noise: false
+    - name: "with_noise"
+      observations:
+        normalize_observations: true
+      add_noise: true
+      noise_level: 0.01
+    - name: "high_friction"
+      physics:
+        friction_multiplier: 2.0
+    - name: "low_friction"
+      physics:
+        friction_multiplier: 0.5
+
+# Notes and documentation
+notes: |
+  Evaluation Configuration Guide:
+
+  1. Basic Usage:
+     python evaluate_policy.py --checkpoint model.pth --config configs/evaluation/eval_config.yaml
+
+  2. Quick Testing:
+     Use the 'quick' configuration variant for rapid development cycles.
+
+  3. Comprehensive Evaluation:
+     Use the 'comprehensive' variant for final evaluation and publication.
+
+  4. Video Recording:
+     Enable record_videos for visual inspection of policy behavior.
+
+  5. Multi-checkpoint Comparison:
+     python compare_checkpoints.py --checkpoints model1.pth model2.pth model3.pth
+
+  6. Test Suite Customization:
+     Modify test_suites.default_suites to select specific tests.
+
+  7. Metrics Tuning:
+     Adjust thresholds in metrics section based on robot capabilities.
+
+  8. Performance Tips:
+     - Use metrics_only for fast bulk evaluation
+     - Enable multi_camera only when needed (slower)
+     - Reduce episodes_per_suite for quick tests
+
+  Test Suite Descriptions:
+  - stand: Basic stability and balance
+  - walk: Locomotion and speed control
+  - turn: Agility and turning capabilities
+  - stop: Deceleration and stopping ability
+  - recovery_from_push: Disturbance rejection
+  - crouch: Multi-pose capabilities
+
+  Success Criteria:
+  Each test suite has specific success criteria that must be met
+  for an episode to be considered successful. These include
+  minimum duration, specific pose targets, or motion objectives.
+
+  Metrics Explanation:
+  - Episode Length: Duration of episode in steps
+  - Fall Rate: Fraction of episodes ending in falls
+  - Root/Joint Tracking Error: Accuracy following reference motions
+  - Action Smoothness: Measure of control signal smoothness
+  - Energy Usage: Proxy for energy efficiency
+  - Command Tracking Quality: Accuracy following velocity commands

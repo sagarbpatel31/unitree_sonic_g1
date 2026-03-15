@@ -1,0 +1,230 @@
+# MuJoCo simulation environment configuration for Unitree G1
+
+# Physics simulation parameters
+physics:
+  timestep: 0.005  # 200Hz simulation
+  solver: "PGS"    # PGS or CG
+  iterations: 50
+  tolerance: 1e-10
+
+  # Collision detection
+  collision:
+    margin: 0.001
+    solref: [-1, 0.02]
+    solimp: [0.9, 0.95, 0.001, 0.5, 2]
+
+  # Integrator settings
+  integrator: "RK4"  # Euler, RK4, implicit
+  cone: "elliptic"   # pyramidal, elliptic
+
+# Robot model configuration
+robot:
+  # Model file path
+  model_path: "data/assets/unitree_g1.xml"
+
+  # Initial configuration
+  initial_pose:
+    position: [0.0, 0.0, 0.75]  # x, y, z in meters
+    orientation: [1.0, 0.0, 0.0, 0.0]  # quaternion w, x, y, z
+    joint_positions: "default"  # Use default pose from XML
+
+  # Joint configuration
+  joints:
+    # Joint names (must match XML)
+    position_controlled: [
+      "left_hip_yaw", "left_hip_roll", "left_hip_pitch",
+      "left_knee_pitch", "left_ankle_pitch", "left_ankle_roll",
+      "right_hip_yaw", "right_hip_roll", "right_hip_pitch",
+      "right_knee_pitch", "right_ankle_pitch", "right_ankle_roll",
+      "torso_pitch", "torso_roll",
+      "left_shoulder_pitch", "left_shoulder_roll", "left_elbow_pitch",
+      "right_shoulder_pitch", "right_shoulder_roll", "right_elbow_pitch",
+      "head_yaw", "head_pitch"
+    ]
+
+    # Joint limits (rad) - will be read from XML if not specified
+    position_limits:
+      default: [-3.14, 3.14]
+
+    velocity_limits:
+      default: [-10.0, 10.0]
+
+    # Control parameters
+    control_gains:
+      kp: 100.0  # Position gain
+      kd: 10.0   # Damping gain
+
+    max_torque: 100.0  # Maximum control torque (Nm)
+
+# Sensor configuration
+sensors:
+  # IMU (attached to torso)
+  imu:
+    enabled: true
+    noise:
+      accelerometer: 0.01  # m/s^2
+      gyroscope: 0.001     # rad/s
+      magnetometer: 0.1    # Tesla
+
+  # Joint encoders
+  joint_encoders:
+    enabled: true
+    noise:
+      position: 0.001  # rad
+      velocity: 0.01   # rad/s
+
+  # Force/torque sensors (feet)
+  force_sensors:
+    enabled: true
+    locations: ["left_foot", "right_foot"]
+    noise: 1.0  # Newtons
+
+  # Contact sensors
+  contact_sensors:
+    enabled: true
+    locations: ["left_foot", "right_foot"]
+
+# Actuator modeling
+actuators:
+  # Motor model
+  motor_model:
+    type: "position_servo"
+    gear_ratio: 50.0
+    rotor_inertia: 1e-5
+    damping: 0.1
+
+  # Actuator limits
+  limits:
+    force: 100.0  # Maximum force (N)
+    velocity: 10.0  # Maximum velocity (m/s)
+    acceleration: 100.0  # Maximum acceleration (m/s^2)
+
+  # Actuator dynamics
+  dynamics:
+    time_constant: 0.01  # seconds
+    bandwidth: 100.0     # Hz
+
+# Environment configuration
+environment:
+  # Ground model
+  ground:
+    friction: [1.0, 0.005, 0.0001]  # sliding, torsional, rolling
+    solref: [-1, 0.02]
+    solimp: [0.9, 0.95, 0.001, 0.5, 2]
+    material: "ground"
+
+  # Gravity
+  gravity: [0.0, 0.0, -9.81]
+
+  # Lighting and visualization
+  visual:
+    ambient: [0.3, 0.3, 0.3, 1.0]
+    light_pos: [0.0, 0.0, 3.0]
+    camera_distance: 3.0
+    camera_elevation: -20.0
+
+# Observation space configuration
+observations:
+  # Proprioceptive observations
+  proprioceptive:
+    - "joint_positions"      # Current joint angles
+    - "joint_velocities"     # Joint angular velocities
+    - "base_orientation"     # IMU orientation (quaternion)
+    - "base_angular_velocity"  # IMU angular velocity
+    - "base_linear_acceleration"  # IMU linear acceleration
+
+  # Reference motion observations
+  reference:
+    - "target_joint_positions"  # Target joint positions
+    - "target_joint_velocities" # Target joint velocities
+    - "target_base_position"    # Target base position
+    - "target_base_orientation" # Target base orientation
+
+  # Additional observations
+  additional:
+    - "foot_contacts"        # Foot contact states
+    - "phase_variable"       # Motion phase [0, 1]
+    - "motion_id"           # Motion identification
+
+  # Observation processing
+  normalization:
+    joint_positions: "minmax"  # Normalize to [-1, 1]
+    joint_velocities: "standard"  # Zero mean, unit variance
+    base_orientation: "quaternion"  # Ensure unit quaternion
+
+  noise:
+    enabled: true
+    std_dev: 0.01
+
+# Action space configuration
+actions:
+  # Action type
+  type: "joint_positions"  # joint_positions, joint_velocities, joint_torques
+
+  # Action processing
+  scaling:
+    enabled: true
+    method: "tanh"  # Scale actions through tanh
+
+  # Action filtering
+  filtering:
+    enabled: true
+    type: "lowpass"
+    cutoff_frequency: 10.0  # Hz
+
+  # Action limits (applied after scaling)
+  limits:
+    position: [-1.0, 1.0]  # Normalized joint positions
+
+# Domain randomization configuration
+domain_randomization:
+  # Robot parameter randomization
+  robot_randomization:
+    mass_distribution:
+      enabled: false
+      range: [0.8, 1.2]
+
+    friction_randomization:
+      enabled: false
+      range: [0.5, 1.5]
+
+    motor_strength:
+      enabled: false
+      range: [0.9, 1.1]
+
+  # Environment randomization
+  environment_randomization:
+    ground_friction:
+      enabled: false
+      range: [0.5, 1.5]
+
+    gravity_variation:
+      enabled: false
+      range: [-0.5, 0.5]  # Relative to standard gravity
+
+# Safety configuration
+safety:
+  # Termination conditions
+  termination:
+    base_height_min: 0.3  # meters
+    base_height_max: 1.5  # meters
+    joint_limit_violation: true
+    self_collision: true
+
+  # Emergency stops
+  emergency_stop:
+    excessive_joint_velocity: 20.0  # rad/s
+    excessive_base_velocity: 5.0    # m/s
+    excessive_contact_force: 500.0  # N
+
+# Logging and debugging
+debug:
+  # Visualization options
+  render_contacts: false
+  render_forces: false
+  render_com: false
+  render_joints: false
+
+  # Data logging
+  log_physics_data: false
+  log_frequency: 100  # Hz

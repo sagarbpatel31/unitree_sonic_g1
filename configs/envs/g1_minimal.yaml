@@ -1,0 +1,116 @@
+# Minimal configuration for G1 environment testing
+
+# Basic environment settings
+frame_skip: 10
+action_type: "position_delta"  # "position_delta" or "position_absolute"
+action_scale: 0.1
+render_mode: null  # null, "rgb_array", "human"
+
+# Observation configuration
+observations:
+  include_joint_pos: true
+  include_joint_vel: true
+  include_root_orientation: true
+  include_root_linear_vel: true
+  include_root_angular_vel: true
+  include_previous_action: true
+  include_reference_motion: true
+  reference_horizon: 10
+  include_commands: false
+  include_foot_contacts: true
+  include_imu: true
+  include_height_scan: false
+  height_scan_points: 17
+  joint_pos_noise: 0.0
+  joint_vel_noise: 0.0
+  imu_noise: 0.0
+  normalize_observations: true
+
+# Reward configuration
+rewards:
+  joint_pos_weight: 1.0
+  joint_vel_weight: 0.1
+  root_pos_weight: 1.0
+  root_orient_weight: 1.0
+  root_vel_weight: 0.5
+  root_angvel_weight: 0.1
+  end_effector_weight: 0.5
+  foot_contact_weight: 0.2
+  foot_slip_weight: 0.1
+  upright_weight: 0.1
+  action_smoothness_weight: 0.05
+  torque_penalty_weight: 0.001
+  energy_penalty_weight: 0.001
+  alive_bonus: 0.1
+  command_tracking_weight: 0.0
+  joint_pos_scale: 10.0
+  joint_vel_scale: 1.0
+  root_pos_scale: 20.0
+  root_orient_scale: 5.0
+
+# Reset configuration
+resets:
+  use_reference_pose: false
+  pose_noise_scale: 0.1
+  velocity_noise_scale: 0.1
+  reset_to_reference: false
+  reset_to_default: true
+  reset_random: false
+  random_reference_time: true
+  reference_time_range: [0.0, 1.0]
+  joint_pos_noise: 0.05
+  joint_vel_noise: 0.1
+  root_pos_noise: 0.02
+  root_orient_noise: 0.1
+  max_joint_deviation: 0.5
+  min_height: 0.5
+  max_height: 1.2
+
+# Domain randomization (disabled for minimal config)
+randomization:
+  enabled: false
+  friction_enabled: false
+  friction_range: [0.8, 1.2]
+  mass_enabled: false
+  mass_range: [0.95, 1.05]
+  motor_enabled: false
+  motor_range: [0.98, 1.02]
+  damping_enabled: false
+  damping_range: [0.9, 1.1]
+  sensor_noise_enabled: false
+  joint_pos_noise_range: [0.0, 0.005]
+  joint_vel_noise_range: [0.0, 0.05]
+  imu_noise_range: [0.0, 0.02]
+  latency_enabled: false
+  latency_range: [0, 1]
+  push_enabled: false
+  push_probability: 0.0
+  push_force_range: [0.0, 0.0]
+  push_duration_range: [1, 1]
+  ground_enabled: false
+  ground_friction_range: [0.8, 1.2]
+  ground_restitution_range: [0.0, 0.1]
+  actuator_enabled: false
+  actuator_gear_range: [0.98, 1.02]
+  actuator_bias_range: [0.0, 0.0]
+  joint_enabled: false
+  joint_stiffness_range: [0.98, 1.02]
+  joint_armature_range: [0.98, 1.02]
+
+# Command configuration (disabled for minimal config)
+commands:
+  enabled: false
+  forward_vel_range: [0.0, 1.0]
+  backward_vel_range: [-1.0, 0.0]
+  lateral_vel_range: [-0.5, 0.5]
+  yaw_rate_range: [-1.0, 1.0]
+  command_duration_range: [2.0, 5.0]
+  resample_interval: 50
+  smooth_commands: true
+  smoothing_factor: 0.9
+
+# Safety configuration
+safety:
+  fall_height: 0.3
+  fall_angle: 1.0
+  max_joint_vel: 50.0

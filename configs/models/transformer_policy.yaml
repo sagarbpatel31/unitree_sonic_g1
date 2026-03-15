@@ -1,0 +1,151 @@
+# Transformer-based policy network configuration
+
+# Model architecture
+architecture:
+  name: "TransformerPolicy"
+  type: "sequence_model"
+
+# Input processing
+input:
+  # Observation encoding
+  obs_encoder:
+    type: "mlp"
+    layers: [512, 256]
+    activation: "relu"
+    dropout: 0.1
+    layer_norm: true
+
+  # Reference motion encoding
+  ref_encoder:
+    type: "mlp"
+    layers: [256, 256]
+    activation: "relu"
+    dropout: 0.1
+    layer_norm: true
+
+  # Positional encoding
+  positional_encoding:
+    type: "learned"  # or "sinusoidal"
+    max_sequence_length: 64
+
+# Transformer backbone
+transformer:
+  hidden_dim: 512
+  num_layers: 6
+  num_heads: 8
+  feedforward_dim: 2048
+  dropout: 0.1
+  activation: "gelu"
+
+  # Attention configuration
+  attention:
+    causal: false  # bidirectional attention
+    relative_position: true
+    max_relative_distance: 32
+
+  # Layer configuration
+  layer:
+    prenorm: true  # Pre-LayerNorm
+    residual_dropout: 0.1
+    attention_dropout: 0.1
+
+# Output processing
+output:
+  # Action decoder
+  action_decoder:
+    type: "mlp"
+    layers: [256, 128]
+    activation: "relu"
+    dropout: 0.0  # No dropout in final layers
+    output_activation: "tanh"  # Bounded actions
+
+  # Value function (for RL fine-tuning)
+  value_decoder:
+    type: "mlp"
+    layers: [256, 128, 1]
+    activation: "relu"
+    dropout: 0.1
+
+# Regularization
+regularization:
+  weight_decay: 1e-5
+  gradient_clipping: 10.0
+  label_smoothing: 0.0
+
+# Training optimizations
+training:
+  # Mixed precision training
+  mixed_precision: true
+
+  # Gradient accumulation
+  gradient_accumulation_steps: 1
+
+  # Learning rate scheduling
+  learning_rate:
+    base_lr: 3e-4
+    warmup_steps: 10000
+    scheduler: "cosine_annealing"
+    min_lr_ratio: 0.1
+
+  # Optimizer configuration
+  optimizer:
+    type: "adamw"
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    weight_decay: 1e-5
+
+# Model-specific configurations
+
+# For behavior cloning
+bc_config:
+  sequence_length: 32
+  masking_prob: 0.0  # No masking for BC
+  teacher_forcing: true
+
+# For reinforcement learning
+rl_config:
+  sequence_length: 16  # Shorter sequences for faster RL
+  action_masking: true
+  value_function: true
+
+  # PPO-specific
+  clip_range: 0.2
+  vf_coef: 0.5
+  entropy_coef: 0.01
+
+# Initialization
+initialization:
+  scheme: "xavier_uniform"
+  gain: 1.0
+
+  # Special initialization for output layers
+  output_layer:
+    scheme: "zeros"  # Initialize output to zero for stable training
+
+# Model export configuration
+export:
+  # ONNX export settings
+  onnx:
+    opset_version: 17
+    dynamic_axes:
+      input: {0: "batch_size", 1: "sequence_length"}
+      output: {0: "batch_size", 1: "sequence_length"}
+    optimize: true
+
+  # TorchScript settings
+  torchscript:
+    strict: false
+    optimize_for_inference: true
+
+# Hardware-specific optimizations
+hardware:
+  # CPU optimizations
+  cpu:
+    enable_mkldnn: true
+    num_threads: 4
+
+  # GPU optimizations
+  gpu:
+    enable_cudnn_benchmark: true
+    memory_efficient_attention: true
+    compile_model: false  # PyTorch 2.0 compilation
