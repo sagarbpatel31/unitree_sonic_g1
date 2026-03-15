@@ -1,0 +1,212 @@
+<?xml version="1.0" ?>
+<mujoco model="unitree_g1_29dof">
+    <compiler angle="degree" autolimits="true"/>
+    <option timestep="0.001" iterations="50" solver="Newton" tolerance="1e-10"/>
+
+    <size nconmax="200" njmax="2000" nstack="1000000"/>
+
+    <default>
+        <motor ctrlrange="-1 1" ctrllimited="true"/>
+        <geom contype="1" conaffinity="1" condim="3" friction="1.2 0.5 0.005" margin="0.01"/>
+        <joint armature="0.01" damping="0.2" limited="true"/>
+
+        <default class="body">
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="1000" mass="0.1"/>
+        </default>
+
+        <default class="leg">
+            <joint damping="0.5" armature="0.1"/>
+        </default>
+
+        <default class="arm">
+            <joint damping="0.3" armature="0.05"/>
+        </default>
+
+        <default class="hand">
+            <joint damping="0.1" armature="0.01"/>
+        </default>
+    </default>
+
+    <worldbody>
+        <light name="spotlight" mode="targetbodycom" target="pelvis" pos="0 -3 2"/>
+        <geom name="floor" size="15 15 0.125" type="plane" rgba="0.4 0.4 0.4 1"/>
+
+        <!-- Main body with free joint for 6 DOF base motion -->
+        <body name="pelvis" pos="0 0 0.95">
+            <camera name="track" mode="trackcom" pos="0 -4 2" xyaxes="1 0 0 0 1 2"/>
+            <joint name="root" type="free"/>
+
+            <!-- Pelvis (base) -->
+            <geom name="pelvis" type="box" size="0.12 0.08 0.06" rgba="0.2 0.3 0.8 1"/>
+
+            <!-- Torso -->
+            <body name="torso" pos="0 0 0.15">
+                <joint name="torso_pitch" type="hinge" axis="1 0 0" range="-45 45"/>
+                <geom name="torso" type="box" size="0.1 0.06 0.2" rgba="0.2 0.3 0.8 1"/>
+
+                <!-- Head -->
+                <body name="head" pos="0 0 0.25">
+                    <joint name="head_yaw" type="hinge" axis="0 0 1" range="-90 90"/>
+                    <joint name="head_pitch" type="hinge" axis="1 0 0" range="-30 30"/>
+                    <geom name="head" type="sphere" size="0.08" rgba="0.8 0.8 0.2 1"/>
+                </body>
+
+                <!-- LEFT ARM CHAIN (7 DOF) -->
+                <body name="left_shoulder" pos="0.08 0.12 0.15">
+                    <joint name="left_shoulder_pitch" type="hinge" axis="1 0 0" range="-180 60" class="arm"/>
+                    <geom name="left_shoulder" type="sphere" size="0.04" rgba="0.6 0.2 0.2 1"/>
+
+                    <body name="left_shoulder_roll" pos="0 0.05 0">
+                        <joint name="left_shoulder_roll" type="hinge" axis="0 1 0" range="-120 120" class="arm"/>
+                        <geom name="left_upper_arm" type="capsule" size="0.03 0.08" rgba="0.2 0.8 0.3 1"/>
+
+                        <body name="left_shoulder_yaw" pos="0 0 -0.1">
+                            <joint name="left_shoulder_yaw" type="hinge" axis="0 0 1" range="-90 90" class="arm"/>
+                            <geom name="left_shoulder_yaw_link" type="sphere" size="0.025" rgba="0.5 0.5 0.5 1" mass="0.2"/>
+
+                            <body name="left_elbow" pos="0 0 -0.08">
+                                <joint name="left_elbow_pitch" type="hinge" axis="1 0 0" range="-150 10" class="arm"/>
+                                <geom name="left_forearm" type="capsule" size="0.025 0.06" rgba="0.8 0.2 0.2 1"/>
+
+                                <body name="left_wrist" pos="0 0 -0.08">
+                                    <joint name="left_wrist_pitch" type="hinge" axis="1 0 0" range="-60 60" class="hand"/>
+                                    <joint name="left_wrist_yaw" type="hinge" axis="0 0 1" range="-45 45" class="hand"/>
+
+                                    <body name="left_hand" pos="0 0 -0.05">
+                                        <joint name="left_hand_pitch" type="hinge" axis="1 0 0" range="-30 30" class="hand"/>
+                                        <geom name="left_hand" type="box" size="0.03 0.02 0.06" rgba="0.8 0.6 0.2 1"/>
+                                    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+
+                <!-- RIGHT ARM CHAIN (7 DOF) -->
+                <body name="right_shoulder" pos="0.08 -0.12 0.15">
+                    <joint name="right_shoulder_pitch" type="hinge" axis="1 0 0" range="-180 60" class="arm"/>
+                    <geom name="right_shoulder" type="sphere" size="0.04" rgba="0.6 0.2 0.2 1"/>
+
+                    <body name="right_shoulder_roll" pos="0 -0.05 0">
+                        <joint name="right_shoulder_roll" type="hinge" axis="0 -1 0" range="-120 120" class="arm"/>
+                        <geom name="right_upper_arm" type="capsule" size="0.03 0.08" rgba="0.2 0.8 0.3 1"/>
+
+                        <body name="right_shoulder_yaw" pos="0 0 -0.1">
+                            <joint name="right_shoulder_yaw" type="hinge" axis="0 0 1" range="-90 90" class="arm"/>
+
+                            <body name="right_elbow" pos="0 0 -0.08">
+                                <joint name="right_elbow_pitch" type="hinge" axis="1 0 0" range="-150 10" class="arm"/>
+                                <geom name="right_forearm" type="capsule" size="0.025 0.06" rgba="0.8 0.2 0.2 1"/>
+
+                                <body name="right_wrist" pos="0 0 -0.08">
+                                    <joint name="right_wrist_pitch" type="hinge" axis="1 0 0" range="-60 60" class="hand"/>
+                                    <joint name="right_wrist_yaw" type="hinge" axis="0 0 1" range="-45 45" class="hand"/>
+
+                                    <body name="right_hand" pos="0 0 -0.05">
+                                        <joint name="right_hand_pitch" type="hinge" axis="1 0 0" range="-30 30" class="hand"/>
+                                        <geom name="right_hand" type="box" size="0.03 0.02 0.06" rgba="0.8 0.6 0.2 1"/>
+                                    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+
+            <!-- LEFT LEG CHAIN (6 DOF) -->
+            <body name="left_hip" pos="0 0.06 -0.08">
+                <joint name="left_hip_pitch" type="hinge" axis="1 0 0" range="-60 120" class="leg"/>
+                <geom name="left_hip" type="sphere" size="0.045" rgba="0.6 0.2 0.2 1"/>
+
+                <body name="left_hip_roll" pos="0 0.02 0">
+                    <joint name="left_hip_roll" type="hinge" axis="0 1 0" range="-30 30" class="leg"/>
+
+                    <body name="left_hip_yaw" pos="0 0 0">
+                        <joint name="left_hip_yaw" type="hinge" axis="0 0 1" range="-45 45" class="leg"/>
+                        <geom name="left_thigh" type="capsule" size="0.045 0.12" rgba="0.8 0.2 0.2 1"/>
+
+                        <body name="left_knee" pos="0 0 -0.15">
+                            <joint name="left_knee_pitch" type="hinge" axis="1 0 0" range="-150 0" class="leg"/>
+                            <geom name="left_shin" type="capsule" size="0.04 0.1" rgba="0.2 0.8 0.3 1"/>
+
+                            <body name="left_ankle" pos="0 0 -0.12">
+                                <joint name="left_ankle_pitch" type="hinge" axis="1 0 0" range="-45 45" class="leg"/>
+                                <joint name="left_ankle_roll" type="hinge" axis="0 1 0" range="-25 25" class="leg"/>
+                                <geom name="left_foot" type="box" size="0.08 0.04 0.02" pos="0.03 0 -0.02" rgba="0.2 0.3 0.8 1"/>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+
+            <!-- RIGHT LEG CHAIN (6 DOF) -->
+            <body name="right_hip" pos="0 -0.06 -0.08">
+                <joint name="right_hip_pitch" type="hinge" axis="1 0 0" range="-60 120" class="leg"/>
+                <geom name="right_hip" type="sphere" size="0.045" rgba="0.6 0.2 0.2 1"/>
+
+                <body name="right_hip_roll" pos="0 -0.02 0">
+                    <joint name="right_hip_roll" type="hinge" axis="0 -1 0" range="-30 30" class="leg"/>
+
+                    <body name="right_hip_yaw" pos="0 0 0">
+                        <joint name="right_hip_yaw" type="hinge" axis="0 0 1" range="-45 45" class="leg"/>
+                        <geom name="right_thigh" type="capsule" size="0.045 0.12" rgba="0.8 0.2 0.2 1"/>
+
+                        <body name="right_knee" pos="0 0 -0.15">
+                            <joint name="right_knee_pitch" type="hinge" axis="1 0 0" range="-150 0" class="leg"/>
+                            <geom name="right_shin" type="capsule" size="0.04 0.1" rgba="0.2 0.8 0.3 1"/>
+
+                            <body name="right_ankle" pos="0 0 -0.12">
+                                <joint name="right_ankle_pitch" type="hinge" axis="1 0 0" range="-45 45" class="leg"/>
+                                <joint name="right_ankle_roll" type="hinge" axis="0 -1 0" range="-25 25" class="leg"/>
+                                <geom name="right_foot" type="box" size="0.08 0.04 0.02" pos="0.03 0 -0.02" rgba="0.2 0.3 0.8 1"/>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <!-- Torso (1 DOF) -->
+        <motor name="torso_pitch_motor" joint="torso_pitch" gear="100"/>
+
+        <!-- Head (2 DOF) -->
+        <motor name="head_yaw_motor" joint="head_yaw" gear="30"/>
+        <motor name="head_pitch_motor" joint="head_pitch" gear="30"/>
+
+        <!-- Left Arm (7 DOF) -->
+        <motor name="left_shoulder_pitch_motor" joint="left_shoulder_pitch" gear="100"/>
+        <motor name="left_shoulder_roll_motor" joint="left_shoulder_roll" gear="100"/>
+        <motor name="left_shoulder_yaw_motor" joint="left_shoulder_yaw" gear="80"/>
+        <motor name="left_elbow_pitch_motor" joint="left_elbow_pitch" gear="60"/>
+        <motor name="left_wrist_pitch_motor" joint="left_wrist_pitch" gear="30"/>
+        <motor name="left_wrist_yaw_motor" joint="left_wrist_yaw" gear="25"/>
+        <motor name="left_hand_pitch_motor" joint="left_hand_pitch" gear="20"/>
+
+        <!-- Right Arm (7 DOF) -->
+        <motor name="right_shoulder_pitch_motor" joint="right_shoulder_pitch" gear="100"/>
+        <motor name="right_shoulder_roll_motor" joint="right_shoulder_roll" gear="100"/>
+        <motor name="right_shoulder_yaw_motor" joint="right_shoulder_yaw" gear="80"/>
+        <motor name="right_elbow_pitch_motor" joint="right_elbow_pitch" gear="60"/>
+        <motor name="right_wrist_pitch_motor" joint="right_wrist_pitch" gear="30"/>
+        <motor name="right_wrist_yaw_motor" joint="right_wrist_yaw" gear="25"/>
+        <motor name="right_hand_pitch_motor" joint="right_hand_pitch" gear="20"/>
+
+        <!-- Left Leg (6 DOF) -->
+        <motor name="left_hip_pitch_motor" joint="left_hip_pitch" gear="200"/>
+        <motor name="left_hip_roll_motor" joint="left_hip_roll" gear="200"/>
+        <motor name="left_hip_yaw_motor" joint="left_hip_yaw" gear="150"/>
+        <motor name="left_knee_pitch_motor" joint="left_knee_pitch" gear="200"/>
+        <motor name="left_ankle_pitch_motor" joint="left_ankle_pitch" gear="100"/>
+        <motor name="left_ankle_roll_motor" joint="left_ankle_roll" gear="100"/>
+
+        <!-- Right Leg (6 DOF) -->
+        <motor name="right_hip_pitch_motor" joint="right_hip_pitch" gear="200"/>
+        <motor name="right_hip_roll_motor" joint="right_hip_roll" gear="200"/>
+        <motor name="right_hip_yaw_motor" joint="right_hip_yaw" gear="150"/>
+        <motor name="right_knee_pitch_motor" joint="right_knee_pitch" gear="200"/>
+        <motor name="right_ankle_pitch_motor" joint="right_ankle_pitch" gear="100"/>
+        <motor name="right_ankle_roll_motor" joint="right_ankle_roll" gear="100"/>
+    </actuator>
+</mujoco>

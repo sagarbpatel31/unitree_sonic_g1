@@ -25,10 +25,19 @@ class MacMuJoCoPolicyInterface:
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         model_info = checkpoint['model_info']
 
-        # Create Mac-optimized model
+        # Create Mac-optimized model with correct architecture from checkpoint
+        d_model = model_info.get('d_model', 128)  # Get from checkpoint or default
+
+        # Calculate layers from the checkpoint keys to ensure compatibility
+        state_dict_keys = list(checkpoint['model_state_dict'].keys())
+        transformer_layers = [key for key in state_dict_keys if key.startswith('transformer.layers.')]
+        max_layer = max([int(key.split('.')[2]) for key in transformer_layers]) + 1 if transformer_layers else 3
+
         self.model = create_mac_optimized_model(
             obs_dim=model_info['obs_dim'],
-            action_dim=model_info['action_dim']
+            action_dim=model_info['action_dim'],
+            d_model=d_model,
+            num_layers=max_layer
         )
 
         # Load trained weights

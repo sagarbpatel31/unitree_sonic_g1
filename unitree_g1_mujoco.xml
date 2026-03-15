@@ -1,0 +1,145 @@
+<?xml version="1.0" ?>
+<mujoco model="unitree_g1">
+    <compiler angle="degree" autolimits="true"/>
+    <option timestep="0.001" iterations="50" solver="Newton" tolerance="1e-10"/>
+
+    <size nconmax="100" njmax="1000" nstack="600000"/>
+
+    <default>
+        <motor ctrlrange="-1 1" ctrllimited="true"/>
+        <geom contype="1" conaffinity="1" condim="3" friction="1 0.5 0.005" margin="0.01" material="geom"/>
+        <joint armature="0.01" damping="0.1" limited="true"/>
+        <default class="body">
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0"/>
+        </default>
+        <default class="thigh">
+            <joint damping="0" armature="0.01"/>
+        </default>
+        <default class="shin">
+            <joint range="-160 -30" damping="0" armature="0.01"/>
+        </default>
+        <default class="foot">
+            <joint damping="0" armature="0.01"/>
+            <geom friction="1.5 0.005 0.0001"/>
+        </default>
+    </default>
+
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.4 0.6 0.8" rgb2="0.0 0.0 0.0"/>
+        <texture name="grid" type="2d" builtin="checker" rgb1="0.1 0.2 0.3" rgb2="0.2 0.3 0.4"/>
+        <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.2"/>
+        <material name="geom" rgba="0.8 0.6 0.4 1"/>
+        <material name="self" rgba="0.7 0.5 0.3 1"/>
+        <material name="decoration" rgba="0.3 0.5 0.7 1"/>
+    </asset>
+
+    <worldbody>
+        <light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1"/>
+        <geom name="floor" size="20 20 0.125" type="plane" material="grid"/>
+
+        <body name="pelvis" pos="0 0 0.85">
+            <camera name="track" mode="trackcom" pos="0 -3 1" xyaxes="1 0 0 0 1 2"/>
+            <joint name="root" type="free"/>
+
+            <!-- Main torso -->
+            <geom name="torso" type="box" size="0.15 0.08 0.25" rgba="0.2 0.3 0.8 1"/>
+
+            <!-- Head -->
+            <body name="head" pos="0 0 0.35">
+                <geom name="head" type="sphere" size="0.08" rgba="0.8 0.8 0.2 1"/>
+            </body>
+
+            <!-- Left arm -->
+            <body name="left_shoulder" pos="0.12 0.15 0.15">
+                <joint name="left_shoulder_pitch" type="hinge" axis="1 0 0" range="-180 60" damping="1"/>
+                <geom name="left_upper_arm" type="capsule" size="0.04 0.12" rgba="0.3 0.8 0.3 1"/>
+
+                <body name="left_elbow" pos="0 0 -0.15">
+                    <joint name="left_shoulder_roll" type="hinge" axis="0 1 0" range="-120 120" damping="1"/>
+                    <geom name="left_forearm" type="capsule" size="0.03 0.1" rgba="0.2 0.6 0.8 1"/>
+
+                    <body name="left_hand" pos="0 0 -0.12">
+                        <joint name="left_elbow_pitch" type="hinge" axis="1 0 0" range="-120 10" damping="0.5"/>
+                        <geom name="left_hand" type="box" size="0.04 0.02 0.06" rgba="0.8 0.6 0.2 1"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Right arm -->
+            <body name="right_shoulder" pos="0.12 -0.15 0.15">
+                <joint name="right_shoulder_pitch" type="hinge" axis="1 0 0" range="-180 60" damping="1"/>
+                <geom name="right_upper_arm" type="capsule" size="0.04 0.12" rgba="0.3 0.8 0.3 1"/>
+
+                <body name="right_elbow" pos="0 0 -0.15">
+                    <joint name="right_shoulder_roll" type="hinge" axis="0 -1 0" range="-120 120" damping="1"/>
+                    <geom name="right_forearm" type="capsule" size="0.03 0.1" rgba="0.2 0.6 0.8 1"/>
+
+                    <body name="right_hand" pos="0 0 -0.12">
+                        <joint name="right_elbow_pitch" type="hinge" axis="1 0 0" range="-120 10" damping="0.5"/>
+                        <geom name="right_hand" type="box" size="0.04 0.02 0.06" rgba="0.8 0.6 0.2 1"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Left leg -->
+            <body name="left_hip" pos="0 0.1 -0.15">
+                <joint name="left_hip_pitch" type="hinge" axis="1 0 0" range="-60 180" class="thigh"/>
+                <geom name="left_thigh" type="capsule" size="0.05 0.15" rgba="0.8 0.3 0.3 1"/>
+
+                <body name="left_knee" pos="0 0 -0.18">
+                    <joint name="left_hip_roll" type="hinge" axis="0 1 0" range="-30 30" class="thigh"/>
+                    <geom name="left_shin" type="capsule" size="0.04 0.12" rgba="0.6 0.8 0.3 1"/>
+
+                    <body name="left_ankle" pos="0 0 -0.15">
+                        <joint name="left_knee_pitch" type="hinge" axis="1 0 0" range="-160 -30" class="shin"/>
+                        <geom name="left_foot" type="box" size="0.08 0.04 0.02" pos="0.03 0 -0.02" rgba="0.2 0.2 0.2 1" class="foot"/>
+                        <joint name="left_ankle_pitch" type="hinge" axis="1 0 0" range="-45 45" class="foot"/>
+                        <joint name="left_ankle_roll" type="hinge" axis="0 1 0" range="-20 20" class="foot"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Right leg -->
+            <body name="right_hip" pos="0 -0.1 -0.15">
+                <joint name="right_hip_pitch" type="hinge" axis="1 0 0" range="-60 180" class="thigh"/>
+                <geom name="right_thigh" type="capsule" size="0.05 0.15" rgba="0.8 0.3 0.3 1"/>
+
+                <body name="right_knee" pos="0 0 -0.18">
+                    <joint name="right_hip_roll" type="hinge" axis="0 -1 0" range="-30 30" class="thigh"/>
+                    <geom name="right_shin" type="capsule" size="0.04 0.12" rgba="0.6 0.8 0.3 1"/>
+
+                    <body name="right_ankle" pos="0 0 -0.15">
+                        <joint name="right_knee_pitch" type="hinge" axis="1 0 0" range="-160 -30" class="shin"/>
+                        <geom name="right_foot" type="box" size="0.08 0.04 0.02" pos="0.03 0 -0.02" rgba="0.2 0.2 0.2 1" class="foot"/>
+                        <joint name="right_ankle_pitch" type="hinge" axis="1 0 0" range="-45 45" class="foot"/>
+                        <joint name="right_ankle_roll" type="hinge" axis="0 -1 0" range="-20 20" class="foot"/>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <!-- Arms -->
+        <motor name="left_shoulder_pitch_motor" joint="left_shoulder_pitch" gear="100"/>
+        <motor name="left_shoulder_roll_motor" joint="left_shoulder_roll" gear="100"/>
+        <motor name="left_elbow_pitch_motor" joint="left_elbow_pitch" gear="50"/>
+
+        <motor name="right_shoulder_pitch_motor" joint="right_shoulder_pitch" gear="100"/>
+        <motor name="right_shoulder_roll_motor" joint="right_shoulder_roll" gear="100"/>
+        <motor name="right_elbow_pitch_motor" joint="right_elbow_pitch" gear="50"/>
+
+        <!-- Legs -->
+        <motor name="left_hip_pitch_motor" joint="left_hip_pitch" gear="200"/>
+        <motor name="left_hip_roll_motor" joint="left_hip_roll" gear="200"/>
+        <motor name="left_knee_pitch_motor" joint="left_knee_pitch" gear="200"/>
+        <motor name="left_ankle_pitch_motor" joint="left_ankle_pitch" gear="100"/>
+        <motor name="left_ankle_roll_motor" joint="left_ankle_roll" gear="100"/>
+
+        <motor name="right_hip_pitch_motor" joint="right_hip_pitch" gear="200"/>
+        <motor name="right_hip_roll_motor" joint="right_hip_roll" gear="200"/>
+        <motor name="right_knee_pitch_motor" joint="right_knee_pitch" gear="200"/>
+        <motor name="right_ankle_pitch_motor" joint="right_ankle_pitch" gear="100"/>
+        <motor name="right_ankle_roll_motor" joint="right_ankle_roll" gear="100"/>
+    </actuator>
+</mujoco>

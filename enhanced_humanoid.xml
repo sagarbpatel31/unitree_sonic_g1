@@ -1,0 +1,114 @@
+
+<mujoco model="enhanced_humanoid">
+    <option timestep="0.002"/>
+
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+        <texture name="body" type="cube" builtin="flat" mark="cross" width="127" height="127"
+                 rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
+        <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
+        <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+        <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+    </asset>
+
+    <worldbody>
+        <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+        <geom name="floor" size="0 0 .05" type="plane" material="grid"/>
+
+        <body name="torso" pos="0 0 1.4">
+            <joint name="root" type="free"/>
+            <geom name="torso" type="capsule" size="0.07 0.28" material="body"/>
+
+            <!-- Head -->
+            <body name="head" pos="0 0 0.19">
+                <geom name="head" type="sphere" size="0.09" material="body"/>
+            </body>
+
+            <!-- Left arm -->
+            <body name="left_upper_arm" pos="0.13 -0.1 0.1">
+                <joint name="left_shoulder_x" type="hinge" axis="1 0 0" range="-85 60"/>
+                <joint name="left_shoulder_y" type="hinge" axis="0 1 0" range="-85 85"/>
+                <geom name="left_upper_arm" type="capsule" size="0.04 0.11" material="body"/>
+
+                <body name="left_lower_arm" pos="0 0 -0.15">
+                    <joint name="left_elbow" type="hinge" axis="0 1 0" range="-90 50"/>
+                    <geom name="left_lower_arm" type="capsule" size="0.031 0.1" material="body"/>
+
+                    <body name="left_hand" pos="0 0 -0.1">
+                        <geom name="left_hand" type="sphere" size="0.04" material="body"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Right arm -->
+            <body name="right_upper_arm" pos="-0.13 -0.1 0.1">
+                <joint name="right_shoulder_x" type="hinge" axis="1 0 0" range="-60 85"/>
+                <joint name="right_shoulder_y" type="hinge" axis="0 1 0" range="-85 85"/>
+                <geom name="right_upper_arm" type="capsule" size="0.04 0.11" material="body"/>
+
+                <body name="right_lower_arm" pos="0 0 -0.15">
+                    <joint name="right_elbow" type="hinge" axis="0 1 0" range="-90 50"/>
+                    <geom name="right_lower_arm" type="capsule" size="0.031 0.1" material="body"/>
+
+                    <body name="right_hand" pos="0 0 -0.1">
+                        <geom name="right_hand" type="sphere" size="0.04" material="body"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Left leg -->
+            <body name="left_upper_leg" pos="0.05 0 -0.35">
+                <joint name="left_hip_x" type="hinge" axis="1 0 0" range="-25 5"/>
+                <joint name="left_hip_y" type="hinge" axis="0 1 0" range="-25 25"/>
+                <joint name="left_hip_z" type="hinge" axis="0 0 1" range="-60 35"/>
+                <geom name="left_upper_leg" type="capsule" size="0.04 0.14" material="body"/>
+
+                <body name="left_lower_leg" pos="0 0 -0.18">
+                    <joint name="left_knee" type="hinge" axis="0 1 0" range="-160 -2"/>
+                    <geom name="left_lower_leg" type="capsule" size="0.033 0.12" material="body"/>
+
+                    <body name="left_foot" pos="0 0 -0.1">
+                        <geom name="left_foot" type="capsule" size="0.027 0.06" material="body"/>
+                    </body>
+                </body>
+            </body>
+
+            <!-- Right leg -->
+            <body name="right_upper_leg" pos="-0.05 0 -0.35">
+                <joint name="right_hip_x" type="hinge" axis="1 0 0" range="-25 5"/>
+                <joint name="right_hip_y" type="hinge" axis="0 1 0" range="-25 25"/>
+                <joint name="right_hip_z" type="hinge" axis="0 0 1" range="-35 60"/>
+                <geom name="right_upper_leg" type="capsule" size="0.04 0.14" material="body"/>
+
+                <body name="right_lower_leg" pos="0 0 -0.18">
+                    <joint name="right_knee" type="hinge" axis="0 1 0" range="-160 -2"/>
+                    <geom name="right_lower_leg" type="capsule" size="0.033 0.12" material="body"/>
+
+                    <body name="right_foot" pos="0 0 -0.1">
+                        <geom name="right_foot" type="capsule" size="0.027 0.06" material="body"/>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <!-- Arms -->
+        <motor name="left_shoulder_x" joint="left_shoulder_x" gear="25"/>
+        <motor name="left_shoulder_y" joint="left_shoulder_y" gear="25"/>
+        <motor name="left_elbow" joint="left_elbow" gear="25"/>
+        <motor name="right_shoulder_x" joint="right_shoulder_x" gear="25"/>
+        <motor name="right_shoulder_y" joint="right_shoulder_y" gear="25"/>
+        <motor name="right_elbow" joint="right_elbow" gear="25"/>
+
+        <!-- Legs -->
+        <motor name="left_hip_x" joint="left_hip_x" gear="120"/>
+        <motor name="left_hip_y" joint="left_hip_y" gear="120"/>
+        <motor name="left_hip_z" joint="left_hip_z" gear="120"/>
+        <motor name="left_knee" joint="left_knee" gear="120"/>
+        <motor name="right_hip_x" joint="right_hip_x" gear="120"/>
+        <motor name="right_hip_y" joint="right_hip_y" gear="120"/>
+        <motor name="right_hip_z" joint="right_hip_z" gear="120"/>
+        <motor name="right_knee" joint="right_knee" gear="120"/>
+    </actuator>
+</mujoco>

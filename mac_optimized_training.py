@@ -191,14 +191,17 @@ class MacOptimizedTrainer:
             json.dump(stats, f, indent=2)
 
 
-def create_mac_optimized_model(obs_dim: int, action_dim: int) -> OptimizedTransformerPolicy:
-    """Create Mac-optimized model with smaller architecture for CPU training."""
+def create_mac_optimized_model(obs_dim: int, action_dim: int, d_model: int = 128, num_layers: int = 3) -> OptimizedTransformerPolicy:
+    """Create Mac-optimized model with configurable architecture for CPU training."""
+    # Calculate number of attention heads based on d_model
+    nhead = max(4, d_model // 32)  # Ensure divisibility and reasonable head count
+
     return OptimizedTransformerPolicy(
         obs_dim=obs_dim,
         action_dim=action_dim,
-        d_model=128,  # Reduced for CPU efficiency
-        nhead=4,      # Reduced attention heads
-        num_layers=3  # Fewer layers for faster CPU training
+        d_model=d_model,
+        nhead=nhead,
+        num_layers=num_layers
     )
 
 
@@ -210,6 +213,8 @@ def main():
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=4)  # Smaller for CPU
     parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--d_model", type=int, default=128)  # Model dimension
+    parser.add_argument("--num_layers", type=int, default=3)  # Number of transformer layers
     parser.add_argument("--sequence_length", type=int, default=16)  # Shorter sequences
 
     args = parser.parse_args()
@@ -260,7 +265,7 @@ def main():
     print(f"Dimensions: {obs_dim} obs → {action_dim} actions")
 
     # Create Mac-optimized model
-    model = create_mac_optimized_model(obs_dim, action_dim)
+    model = create_mac_optimized_model(obs_dim, action_dim, args.d_model, args.num_layers)
 
     model_info = model.get_model_info()
     print(f"\n🧠 Model: {model_info['total_parameters']:,} parameters ({model_info['parameter_size_mb']:.1f} MB)")
