@@ -54,14 +54,40 @@ def main():
         system_info = get_system_info()
         logger.info(f"System info: {system_info}")
 
-        # Create environment (for observation/action space info)
-        env = create_g1_environment(config)
-        obs_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.shape[0]
+        # Get dimensions from data source or environment
+        use_csv = getattr(config.env.task, 'use_csv_data', False)
 
-        logger.info(f"Environment: {config.env.name}")
-        logger.info(f"Observation dim: {obs_dim}")
-        logger.info(f"Action dim: {action_dim}")
+        if use_csv:
+            # For CSV data, auto-detect dimensions from actual CSV file
+            logger.info("Auto-detecting dimensions from CSV data...")
+            data_loader = MotionDataLoader(config)
+
+            # Get a sample to determine actual dimensions
+            train_dataset = data_loader.get_training_dataset()
+            if len(train_dataset) > 0:
+                sample = train_dataset[0]
+                obs_dim = sample['observations'].shape[-1]
+                action_dim = sample['actions'].shape[-1]
+                logger.info(f"Auto-detected from CSV data:")
+                logger.info(f"  Observation dim: {obs_dim}")
+                logger.info(f"  Action dim: {action_dim}")
+
+                # Update config with detected dimensions
+                config.model.obs_dim = obs_dim
+                config.model.action_dim = action_dim
+            else:
+                # Fallback to config values
+                obs_dim = getattr(config.model, 'obs_dim', 42)
+                action_dim = getattr(config.model, 'action_dim', 42)
+                logger.warning(f"Could not detect dimensions, using config defaults: obs={obs_dim}, action={action_dim}")
+        else:
+            # Create environment (for observation/action space info)
+            env = create_g1_environment(config)
+            obs_dim = env.observation_space.shape[0]
+            action_dim = env.action_space.shape[0]
+            logger.info(f"Environment: {config.env.name}")
+            logger.info(f"Observation dim: {obs_dim}")
+            logger.info(f"Action dim: {action_dim}")
 
         # Create model
         model = TransformerPolicy(config, obs_dim, action_dim)
@@ -77,9 +103,12 @@ def main():
         if args.resume:
             trainer.load_checkpoint(args.resume)
 
-        # Create data loaders
-        logger.info("Loading training data...")
-        data_loader = MotionDataLoader(config)
+        # Create data loaders (reuse if already created for dimension detection)
+        if use_csv and 'data_loader' in locals():
+            logger.info("Using previously created data loader...")
+        else:
+            logger.info("Loading training data...")
+            data_loader = MotionDataLoader(config)
 
         train_dataset = data_loader.get_training_dataset()
         eval_dataset = data_loader.get_evaluation_dataset()

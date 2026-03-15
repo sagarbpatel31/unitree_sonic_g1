@@ -1,0 +1,48 @@
+# Deep Lake Data Configuration for Sonic G1 Training
+# This configuration is used when training with exported Deep Lake CSV data
+
+# Data source settings
+use_csv_data: true
+csv_data_path: "data/lightwheel_bevorg_frames.csv"
+
+# Data processing parameters
+sequence_length: 32
+overlap: 0.5
+train_split_ratio: 0.8
+
+# Data augmentation settings
+augmentation:
+  enabled: true
+  noise_scale: 0.01
+  noise_probability: 0.3
+  temporal_scaling: false
+
+# Expected data dimensions (will be auto-detected from CSV)
+# These are estimates based on your table structure
+expected_action_dim: 42  # Number of 'act_' columns
+expected_obs_dim: 42     # Will be set equal to actions if no other obs columns
+
+# Data validation
+validate_data_on_load: true
+min_sequence_length: 32
+max_memory_usage_gb: 8
+
+# CSV parsing options
+csv_options:
+  delimiter: ","
+  skip_rows: 0
+  id_column: "_id"
+  action_column_prefix: "act_"
+
+# Preprocessing
+preprocessing:
+  normalize_actions: true
+  normalize_observations: true
+  clip_outliers: true
+  outlier_threshold: 5.0  # Standard deviations
+
+# Memory optimization
+memory_optimization:
+  use_float32: true
+  batch_loading: false
+  cache_sequences: true

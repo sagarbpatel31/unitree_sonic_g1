@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 from omegaconf import DictConfig, OmegaConf
 import hydra
-from hydra import compose, initialize_config_store
+from hydra import compose, initialize_config_dir
 from hydra.core.config_store import ConfigStore
 
 

@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 import json
+import pandas as pd
 
 from ..core.config import Config
 from ..core.logging import get_logger
@@ -105,6 +106,133 @@ class MotionSequenceDataset(Dataset):
         return observations, actions
 
 
+class CSVMotionDataset(Dataset):
+    """Dataset for CSV-based motion imitation data (for Deep Lake exports)."""
+
+    def __init__(
+        self,
+        csv_path: str,
+        sequence_length: int = 32,
+        overlap: float = 0.5,
+        augment: bool = True,
+        train_split: bool = True,
+        split_ratio: float = 0.8,
+    ):
+        self.csv_path = Path(csv_path)
+        self.sequence_length = sequence_length
+        self.overlap = overlap
+        self.augment = augment
+        self.train_split = train_split
+        self.split_ratio = split_ratio
+
+        # Load CSV data
+        logger.info(f"Loading CSV data from: {csv_path}")
+        self.df = pd.read_csv(csv_path)
+        logger.info(f"Loaded CSV with shape: {self.df.shape}")
+
+        # Split data
+        self._split_data()
+
+        # Prepare features
+        self._prepare_data()
+
+        # Generate sequence windows
+        self.sequence_windows = self._generate_windows()
+
+        logger.info(f"Created CSV dataset with {len(self.sequence_windows)} sequence windows")
+
+    def _split_data(self):
+        """Split data into train/validation sets."""
+        split_idx = int(self.split_ratio * len(self.df))
+
+        if self.train_split:
+            self.df = self.df.iloc[:split_idx]
+            logger.info(f"Using training split: {len(self.df)} rows")
+        else:
+            self.df = self.df.iloc[split_idx:]
+            logger.info(f"Using validation split: {len(self.df)} rows")
+
+    def _prepare_data(self):
+        """Extract observations and actions from CSV data."""
+        # Action columns (those starting with 'act_')
+        action_cols = [col for col in self.df.columns if col.startswith('act_')]
+
+        # Observation columns (remaining numeric columns, excluding _id)
+        obs_cols = [col for col in self.df.columns
+                   if col not in action_cols and col != '_id' and
+                   self.df[col].dtype in ['float64', 'int64', 'float32', 'int32']]
+
+        logger.info(f"Found {len(action_cols)} action columns")
+        logger.info(f"Found {len(obs_cols)} observation columns")
+
+        # Extract data
+        if action_cols:
+            self.actions = self.df[action_cols].values.astype(np.float32)
+        else:
+            logger.warning("No action columns found, using random data")
+            self.actions = np.random.randn(len(self.df), 22).astype(np.float32)
+
+        if obs_cols:
+            self.observations = self.df[obs_cols].values.astype(np.float32)
+        else:
+            logger.warning("No observation columns found, using action data")
+            self.observations = self.actions
+
+        logger.info(f"Actions shape: {self.actions.shape}")
+        logger.info(f"Observations shape: {self.observations.shape}")
+
+    def _generate_windows(self) -> List[Tuple[int, int]]:
+        """Generate sliding windows over the data."""
+        windows = []
+
+        # Calculate step size based on overlap
+        step_size = max(1, int(self.sequence_length * (1 - self.overlap)))
+
+        # Generate windows
+        for start_idx in range(0, len(self.df) - self.sequence_length + 1, step_size):
+            end_idx = start_idx + self.sequence_length
+            windows.append((start_idx, end_idx))
+
+        return windows
+
+    def __len__(self) -> int:
+        return len(self.sequence_windows)
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        start_idx, end_idx = self.sequence_windows[idx]
+
+        # Extract sequence window
+        observations = self.observations[start_idx:end_idx]
+        actions = self.actions[start_idx:end_idx]
+
+        # Convert to tensors
+        obs_tensor = torch.FloatTensor(observations)
+        action_tensor = torch.FloatTensor(actions)
+
+        # Data augmentation
+        if self.augment and np.random.random() < 0.5:
+            obs_tensor, action_tensor = self._augment_sequence(obs_tensor, action_tensor)
+
+        return {
+            "observations": obs_tensor,
+            "actions": action_tensor,
+        }
+
+    def _augment_sequence(
+        self,
+        observations: torch.Tensor,
+        actions: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Apply data augmentation to sequence."""
+        # Add noise
+        if np.random.random() < 0.3:
+            noise_scale = 0.01
+            obs_noise = torch.normal(0, noise_scale, observations.shape)
+            observations = observations + obs_noise
+
+        return observations, actions
+
+
 class MotionDataLoader:
     """Main data loader for motion imitation training."""
 
@@ -112,14 +240,21 @@ class MotionDataLoader:
         self.config = config
         self.data_config = config.env.task
 
-        # Data paths
-        self.data_path = Path(self.data_config.reference_data_path)
+        # Check if using CSV data source (for Deep Lake)
+        self.use_csv = getattr(config.env.task, 'use_csv_data', False)
 
-        # Load motion data
-        self.motion_sequences = self._load_motion_data()
+        if self.use_csv:
+            self.csv_path = getattr(config.env.task, 'csv_data_path', 'data/lightwheel_bevorg_frames.csv')
+            logger.info(f"Using CSV data source: {self.csv_path}")
+        else:
+            # Data paths for traditional motion files
+            self.data_path = Path(self.data_config.reference_data_path)
 
-        # Split data
-        self.train_sequences, self.eval_sequences = self._split_data()
+            # Load motion data
+            self.motion_sequences = self._load_motion_data()
+
+            # Split data
+            self.train_sequences, self.eval_sequences = self._split_data()
 
     def _load_motion_data(self) -> List[Dict[str, np.ndarray]]:
         """Load motion data from files."""
@@ -230,27 +365,45 @@ class MotionDataLoader:
 
         return train_sequences, eval_sequences
 
-    def get_training_dataset(self) -> MotionSequenceDataset:
+    def get_training_dataset(self) -> Dataset:
         """Get training dataset."""
         sequence_length = self.config.model.get("sequence_length", 32)
 
-        return MotionSequenceDataset(
-            sequences=self.train_sequences,
-            sequence_length=sequence_length,
-            overlap=0.5,
-            augment=True,
-        )
+        if self.use_csv:
+            return CSVMotionDataset(
+                csv_path=self.csv_path,
+                sequence_length=sequence_length,
+                overlap=0.5,
+                augment=True,
+                train_split=True,
+            )
+        else:
+            return MotionSequenceDataset(
+                sequences=self.train_sequences,
+                sequence_length=sequence_length,
+                overlap=0.5,
+                augment=True,
+            )
 
-    def get_evaluation_dataset(self) -> Optional[MotionSequenceDataset]:
+    def get_evaluation_dataset(self) -> Optional[Dataset]:
         """Get evaluation dataset."""
-        if not self.eval_sequences:
-            return None
-
         sequence_length = self.config.model.get("sequence_length", 32)
 
-        return MotionSequenceDataset(
-            sequences=self.eval_sequences,
-            sequence_length=sequence_length,
-            overlap=0.5,
-            augment=False,
-        )
+        if self.use_csv:
+            return CSVMotionDataset(
+                csv_path=self.csv_path,
+                sequence_length=sequence_length,
+                overlap=0.5,
+                augment=False,
+                train_split=False,
+            )
+        else:
+            if not self.eval_sequences:
+                return None
+
+            return MotionSequenceDataset(
+                sequences=self.eval_sequences,
+                sequence_length=sequence_length,
+                overlap=0.5,
+                augment=False,
+            )

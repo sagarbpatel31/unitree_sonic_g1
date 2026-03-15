@@ -1,0 +1,106 @@
+# Behavior Cloning Training Configuration for Deep Lake Data
+# Based on bc.yaml but modified for Deep Lake CSV data source
+
+# Data configuration - use Deep Lake CSV source
+env:
+  task:
+    use_csv_data: true
+    csv_data_path: "data/lightwheel_bevorg_frames.csv"
+    reference_data_path: "data/"  # fallback path
+
+# Model configuration - adjusted for Deep Lake data dimensions
+model:
+  policy_type: "transformer"
+  sequence_length: 32
+
+  # Transformer specific settings
+  d_model: 256
+  nhead: 8
+  num_layers: 6
+  dim_feedforward: 1024
+  dropout: 0.1
+
+  # Input/output dimensions (will be auto-detected from data)
+  obs_dim: 42    # Auto-detected from CSV columns
+  action_dim: 42 # Auto-detected from 'act_' columns
+
+  # Architecture
+  hidden_dims: [512, 512, 256]
+  activation: "relu"
+  layer_norm: true
+  batch_norm: false
+
+# Training hyperparameters - optimized for large dataset
+training:
+  algorithm: "behavioral_cloning"
+  learning_rate: 1e-4  # Lower LR for large dataset
+  batch_size: 64       # Reasonable batch size for 85K samples
+  num_epochs: 100      # Fewer epochs due to large dataset
+  weight_decay: 1e-5
+  gradient_clip: 1.0
+
+  # Learning rate schedule
+  lr_schedule: "cosine"
+  warmup_epochs: 5
+  min_lr: 1e-6
+
+# Data processing
+data:
+  train_split: 0.8
+  val_split: 0.2
+  shuffle: true
+  normalize_observations: true
+  normalize_actions: true
+  data_augmentation: true
+
+# Loss configuration
+loss:
+  type: "mse"
+  action_loss_weight: 1.0
+  l2_regularization: 1e-6
+
+# Evaluation
+evaluation:
+  eval_frequency: 5     # epochs (more frequent for large dataset)
+  num_eval_episodes: 50
+  eval_deterministic: true
+  save_videos: false
+
+# Checkpointing
+checkpointing:
+  save_frequency: 10    # epochs
+  save_best: true
+  max_checkpoints: 5
+  checkpoint_dir: "checkpoints/bc_deeplake"
+
+# Logging
+logging:
+  use_wandb: false
+  project_name: "g1_bc_deeplake"
+  log_frequency: 100    # steps
+  log_gradients: false
+  log_model: false
+
+# Hardware
+device: "auto"
+num_workers: 4
+pin_memory: true
+
+# Environment for evaluation (if needed)
+eval_env:
+  name: "G1MotionImitation"
+  config_path: "configs/env/g1_motion_imitation.yaml"
+
+# Robot configuration
+robot:
+  config_path: "configs/robot/g1.yaml"
+
+# Experiment settings
+experiment:
+  name: "g1_bc_deeplake_training"
+  description: "Behavior cloning training using exported Deep Lake motion data"
+  tags: ["deeplake", "bc", "g1", "motion_imitation"]
+
+# Random seed for reproducibility
+seed: 42
+deterministic: false
